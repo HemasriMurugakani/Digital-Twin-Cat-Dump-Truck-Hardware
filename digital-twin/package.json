@@ -1,0 +1,13 @@
+{
+  "name": "digital-twin-scbses",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SCBES Digital Twin for Caterpillar 793F",
+  "scripts": {
+    "backend:install": "python3 -m pip install -r backend/requirements.txt",
+    "backend:dev": "python3 backend/app.py",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "frontend:preview": "npm --prefix frontend run preview"
+  }
+}
