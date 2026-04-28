@@ -22,7 +22,7 @@ const HEADLIGHT_MATERIAL = new MeshStandardMaterial({
   roughness: 0.1,
   metalness: 0.2
 });
-const SMOKE_COUNT_PER_PIPE = 24;
+const SMOKE_COUNT = 50;
 
 function Wheel({ position, radius, width, wheelRef }) {
   const lugNuts = useMemo(
@@ -61,21 +61,21 @@ function ExhaustSmoke({ running }) {
   const smokeRef = useRef(null);
   const exhaustTips = useMemo(
     () => [
-      [5, 7.25, -0.8],
-      [5, 7.25, 0],
-      [5, 7.25, 0.8]
+      [5, 7.25, -0.55],
+      [5, 7.25, 0.15],
+      [5, 7.25, 0.85]
     ],
     []
   );
 
   const smokeData = useMemo(() => {
-    const particles = new Float32Array(SMOKE_COUNT_PER_PIPE * exhaustTips.length * 3);
-    for (let i = 0; i < particles.length / 3; i += 1) {
+    const particles = new Float32Array(SMOKE_COUNT * 3);
+    for (let i = 0; i < SMOKE_COUNT; i += 1) {
       const pipeIndex = i % exhaustTips.length;
       const [x, y, z] = exhaustTips[pipeIndex];
       particles[i * 3 + 0] = x + (Math.random() - 0.5) * 0.16;
-      particles[i * 3 + 1] = y + Math.random() * 0.9;
-      particles[i * 3 + 2] = z + (Math.random() - 0.5) * 0.2;
+      particles[i * 3 + 1] = y + Math.random() * 0.5;
+      particles[i * 3 + 2] = z + (Math.random() - 0.5) * 0.18;
     }
     return particles;
   }, [exhaustTips]);
@@ -88,16 +88,16 @@ function ExhaustSmoke({ running }) {
     const attribute = smokeRef.current.geometry.getAttribute('position');
     for (let i = 0; i < attribute.count; i += 1) {
       const base = i * 3;
-      attribute.array[base + 1] += delta * 1.8;
-      attribute.array[base + 0] += (Math.random() - 0.5) * 0.01;
-      attribute.array[base + 2] += (Math.random() - 0.5) * 0.01;
+      attribute.array[base + 1] += delta * 0.65;
+      attribute.array[base + 0] += (Math.random() - 0.5) * 0.004;
+      attribute.array[base + 2] += (Math.random() - 0.5) * 0.004;
 
       const pipeIndex = i % exhaustTips.length;
       const [x, y, z] = exhaustTips[pipeIndex];
-      if (attribute.array[base + 1] > y + 2.2) {
+      if (attribute.array[base + 1] > y + 1.9) {
         attribute.array[base + 0] = x + (Math.random() - 0.5) * 0.16;
-        attribute.array[base + 1] = y + Math.random() * 0.2;
-        attribute.array[base + 2] = z + (Math.random() - 0.5) * 0.2;
+        attribute.array[base + 1] = y + Math.random() * 0.14;
+        attribute.array[base + 2] = z + (Math.random() - 0.5) * 0.14;
       }
     }
     attribute.needsUpdate = true;
@@ -108,17 +108,61 @@ function ExhaustSmoke({ running }) {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[smokeData, 3]} />
       </bufferGeometry>
-      <pointsMaterial color="#9CA3AF" size={0.12} opacity={0.45} transparent depthWrite={false} />
+      <pointsMaterial color="#E5E7EB" size={0.11} opacity={0.35} transparent depthWrite={false} />
+    </points>
+  );
+}
+
+function CorrectionDustBurst({ active }) {
+  const burstRef = useRef(null);
+  const burstData = useMemo(() => {
+    const arr = new Float32Array(60 * 3);
+    for (let i = 0; i < 60; i += 1) {
+      arr[i * 3 + 0] = (Math.random() - 0.5) * 1.4;
+      arr[i * 3 + 1] = 2.0 + Math.random() * 0.4;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 2.0;
+    }
+    return arr;
+  }, []);
+
+  useFrame(({ clock }, delta) => {
+    if (!burstRef.current) return;
+    burstRef.current.visible = active;
+    if (!active) return;
+
+    const attr = burstRef.current.geometry.getAttribute('position');
+    const time = clock.elapsedTime;
+    for (let i = 0; i < attr.count; i += 1) {
+      const base = i * 3;
+      attr.array[base + 1] += delta * (0.55 + Math.sin(time * 12 + i) * 0.08);
+      attr.array[base + 0] += Math.sin(time * 4 + i) * 0.002;
+      attr.array[base + 2] += Math.cos(time * 3 + i) * 0.002;
+      if (attr.array[base + 1] > 4.5) {
+        attr.array[base + 0] = (Math.random() - 0.5) * 1.4;
+        attr.array[base + 1] = 2.0 + Math.random() * 0.4;
+        attr.array[base + 2] = (Math.random() - 0.5) * 2.0;
+      }
+    }
+    attr.needsUpdate = true;
+  });
+
+  return (
+    <points ref={burstRef} visible={active} position={[2.5, 1.8, 0]}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[burstData, 3]} />
+      </bufferGeometry>
+      <pointsMaterial color="#A7F3D0" size={0.055} opacity={0.9} transparent depthWrite={false} />
     </points>
   );
 }
 
 export default function TruckBody() {
   const simState = useSimulationStore((s) => s.state);
+  const dumpCycle = useSimulationStore((s) => s.dumpCycle);
   const wheelRefs = useRef([]);
   const headlightRefs = useRef([]);
 
-  const isEngineRunning = simState.phase !== 'IDLE';
+  const isEngineRunning = dumpCycle?.stage === 'DUMPING';
   const speed = Number(simState.speed ?? 0);
 
   const railingCurve = useMemo(
@@ -149,7 +193,7 @@ export default function TruckBody() {
     for (let i = 0; i < headlightRefs.current.length; i += 1) {
       const light = headlightRefs.current[i];
       if (light) {
-        light.material.emissiveIntensity = pulse;
+        light.material.emissiveIntensity = dumpCycle?.warningLights ? pulse * 1.5 : pulse;
       }
     }
   });
@@ -235,6 +279,7 @@ export default function TruckBody() {
         </mesh>
       ))}
       <ExhaustSmoke running={isEngineRunning} />
+      <CorrectionDustBurst active={dumpCycle?.stage === 'CORRECTING'} />
 
       <Wheel
         wheelRef={(el) => {
@@ -300,6 +345,10 @@ export default function TruckBody() {
 
       <mesh castShadow receiveShadow position={[2.8, 4.6, 0]} material={TRUCK_BLACK}>
         <boxGeometry args={[1.8, 1.6, 6.8]} />
+      </mesh>
+      <mesh castShadow receiveShadow position={[2.8, 4.55, 0]}>
+        <boxGeometry args={[1.95, 1.72, 6.95]} />
+        <meshStandardMaterial color="#330808" emissive="#EF4444" emissiveIntensity={dumpCycle?.warningLights ? 0.55 : 0.02} transparent opacity={0.12} />
       </mesh>
     </group>
   );

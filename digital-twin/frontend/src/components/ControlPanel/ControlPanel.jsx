@@ -35,9 +35,10 @@ const statePalette = {
   IDLE: { color: '#94A3B8', label: 'IDLE' },
   DUMPING: { color: '#3B82F6', label: 'DUMPING' },
   DETECTING: { color: '#F59E0B', label: 'DETECTING' },
-  'CARRY-BACK DETECTED': { color: '#EF4444', label: 'CARRY-BACK DETECTED' },
+  CARRY_BACK_DETECTED: { color: '#EF4444', label: 'CARRY-BACK DETECTED' },
   CORRECTING: { color: '#F59E0B', label: 'CORRECTING' },
-  'VERIFIED CLEAR': { color: '#22C55E', label: 'VERIFIED CLEAR' }
+  VERIFYING: { color: '#22C55E', label: 'VERIFYING' },
+  CLEAR: { color: '#22C55E', label: 'CLEAR' }
 };
 
 const optimalAngleMap = {
@@ -195,6 +196,7 @@ function ConfidenceGauge({ value }) {
 export default function ControlPanel() {
   const connected = useSimulationStore((s) => s.connected);
   const state = useSimulationStore((s) => s.state);
+  const dumpCycle = useSimulationStore((s) => s.dumpCycle);
   const sensors = useSimulationStore((s) => s.sensors);
   const fusion = useSimulationStore((s) => s.fusion);
   const history = useSimulationStore((s) => s.history);
@@ -223,7 +225,7 @@ export default function ControlPanel() {
     return phaseMap[state.phase] ?? 0;
   }, [fusion.residue_risk, state.phase]);
 
-  const currentStateLabel = getPhaseLabel(state.phase, fusion.residue_risk, control.isPaused);
+  const currentStateLabel = dumpCycle?.active ? dumpCycle.stage : getPhaseLabel(state.phase, fusion.residue_risk, control.isPaused);
   const currentStateTone = statePalette[currentStateLabel] ?? statePalette.IDLE;
   const optimalAngle = optimalAngleMap[materialProfile] ?? 50.4;
   const moisture = moistureMap[materialProfile] ?? 13.6;
@@ -240,7 +242,7 @@ export default function ControlPanel() {
     ultrasonic: (latestHistory?.lidar ?? 0) - (previousHistory?.lidar ?? 0)
   };
 
-  const displayedStep = cycleSteps[phaseIndex] ?? 'LOAD';
+  const displayedStep = dumpCycle?.active ? dumpCycle.stage : (cycleSteps[phaseIndex] ?? 'LOAD');
 
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden border-r border-[#1F1F26] bg-[#0F0F12] text-[var(--text-primary)]">
@@ -268,7 +270,7 @@ export default function ControlPanel() {
         </div>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 relative z-20">
+      <div className="flex-1 space-y-3 overflow-hidden px-4 py-4 relative z-20">
         <SectionCard title="Status" subtitle="Current dump cycle and material state">
           <div className="rounded-2xl border border-[#1F1F26] bg-[#161619] p-4">
             <div className="flex items-center justify-between gap-3">
@@ -341,6 +343,9 @@ export default function ControlPanel() {
           <p className="mt-3 text-[11px] text-[var(--text-muted)]">
             Selection changes particle stickiness, sensor generation, and the expected residue outcome.
           </p>
+          <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">
+            Timeline: {dumpCycle?.active ? `T+${Math.floor((dumpCycle.elapsedMs ?? 0) / 1000)}s · ${dumpCycle.stage}` : 'idle'}
+          </p>
         </SectionCard>
 
         <SectionCard title="Main Controls" subtitle="Cycle actions and elimination tools">
@@ -384,34 +389,6 @@ export default function ControlPanel() {
             >
               📊 {showZones ? 'HIDE ZONES' : 'SHOW ZONES'}
             </button>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Cycle Progress" subtitle={`Timer ${cycleSeconds.toFixed(1)}s since start`}>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
-              <span>{displayedStep}</span>
-              <span className="data">{Math.round(progress * 100)}%</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-[#23232b]">
-              <div
-                className="h-full rounded-full bg-[linear-gradient(90deg,#F5A800,#3B82F6)] transition-all duration-500"
-                style={{ width: `${Math.max(4, progress * 100)}%` }}
-              />
-            </div>
-            <div className="grid grid-cols-7 gap-1 text-[10px] uppercase tracking-[0.18em]">
-              {cycleSteps.map((step, index) => {
-                const active = index <= phaseIndex;
-                return (
-                  <div
-                    key={step}
-                    className={`rounded-md border px-2 py-1 text-center ${active ? 'border-[var(--yellow)] text-[var(--yellow)]' : 'border-[#2A2A31] text-[var(--text-muted)]'}`}
-                  >
-                    {step}
-                  </div>
-                );
-              })}
-            </div>
           </div>
         </SectionCard>
 

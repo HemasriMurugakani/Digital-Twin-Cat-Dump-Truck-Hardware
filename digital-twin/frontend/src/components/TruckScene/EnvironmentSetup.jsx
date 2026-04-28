@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { DataTexture, MathUtils, RedFormat, RepeatWrapping, UnsignedByteType } from 'three';
+import { useSimulationStore } from '../../store/simulationStore';
 
 function StarsField() {
   const positions = useMemo(() => {
@@ -29,6 +30,7 @@ function StarsField() {
 
 function DustParticles() {
   const pointsRef = useRef(null);
+  const dumpCycle = useSimulationStore((s) => s.dumpCycle);
 
   const { positions, baseY, offsets } = useMemo(() => {
     const pos = new Float32Array(200 * 3);
@@ -51,12 +53,14 @@ function DustParticles() {
     if (!pointsRef.current) return;
     const attr = pointsRef.current.geometry.getAttribute('position');
     const time = clock.elapsedTime;
+    const dumpBoost = dumpCycle?.active ? 1.9 : 1;
+    const driftBoost = dumpCycle?.stage === 'DUMPING' ? 2.8 : dumpCycle?.stage === 'CORRECTING' ? 2.1 : 1;
 
     for (let i = 0; i < 200; i += 1) {
       const i3 = i * 3;
-      attr.array[i3 + 1] = baseY[i] + Math.sin(time * 0.55 + offsets[i]) * 0.12;
-      attr.array[i3 + 0] += Math.sin(time * 0.2 + offsets[i]) * delta * 0.18;
-      attr.array[i3 + 2] += Math.cos(time * 0.18 + offsets[i]) * delta * 0.18;
+      attr.array[i3 + 1] = baseY[i] + Math.sin(time * 0.55 * driftBoost + offsets[i]) * (0.12 + (dumpCycle?.stage === 'DUMPING' ? 0.08 : 0));
+      attr.array[i3 + 0] += Math.sin(time * 0.2 + offsets[i]) * delta * 0.18 * dumpBoost;
+      attr.array[i3 + 2] += Math.cos(time * 0.18 + offsets[i]) * delta * 0.18 * dumpBoost;
 
       if (Math.abs(attr.array[i3 + 0]) > 18) attr.array[i3 + 0] *= -0.94;
       if (Math.abs(attr.array[i3 + 2]) > 18) attr.array[i3 + 2] *= -0.94;
@@ -69,7 +73,52 @@ function DustParticles() {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial color="#8B7355" size={0.05} transparent opacity={0.3} depthWrite={false} />
+      <pointsMaterial color="#8B7355" size={dumpCycle?.stage === 'DUMPING' ? 0.06 : 0.05} transparent opacity={dumpCycle?.stage === 'DUMPING' ? 0.45 : 0.3} depthWrite={false} />
+    </points>
+  );
+}
+
+function GroundDustBurst() {
+  const burstRef = useRef(null);
+  const dumpCycle = useSimulationStore((s) => s.dumpCycle);
+  const burstData = useMemo(() => {
+    const arr = new Float32Array(120 * 3);
+    for (let i = 0; i < 120; i += 1) {
+      arr[i * 3 + 0] = (Math.random() - 0.5) * 10;
+      arr[i * 3 + 1] = 0.12 + Math.random() * 0.55;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 8;
+    }
+    return arr;
+  }, []);
+
+  useFrame(({ clock }, delta) => {
+    if (!burstRef.current) return;
+    const active = dumpCycle?.stage === 'DUMPING' || dumpCycle?.stage === 'DETECTING' || dumpCycle?.stage === 'CORRECTING';
+    burstRef.current.visible = active && (dumpCycle?.tailgateOpen || dumpCycle?.active);
+    if (!burstRef.current.visible) return;
+
+    const attr = burstRef.current.geometry.getAttribute('position');
+    const time = clock.elapsedTime;
+    for (let i = 0; i < attr.count; i += 1) {
+      const base = i * 3;
+      attr.array[base + 1] += delta * 0.12 + Math.abs(Math.sin(time * 3 + i)) * 0.003;
+      attr.array[base + 0] += Math.sin(time * 1.7 + i) * 0.006;
+      attr.array[base + 2] += Math.cos(time * 1.2 + i) * 0.006;
+      if (attr.array[base + 1] > 1.6) {
+        attr.array[base + 0] = (Math.random() - 0.5) * 10;
+        attr.array[base + 1] = 0.12 + Math.random() * 0.55;
+        attr.array[base + 2] = (Math.random() - 0.5) * 8;
+      }
+    }
+    attr.needsUpdate = true;
+  });
+
+  return (
+    <points ref={burstRef} visible={false} position={[0, 0.18, 0]}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[burstData, 3]} />
+      </bufferGeometry>
+      <pointsMaterial color="#C4B08C" size={0.08} opacity={0.55} transparent depthWrite={false} />
     </points>
   );
 }
@@ -126,6 +175,7 @@ export default function EnvironmentSetup() {
 
       <StarsField />
       <DustParticles />
+      <GroundDustBurst />
     </>
   );
 }

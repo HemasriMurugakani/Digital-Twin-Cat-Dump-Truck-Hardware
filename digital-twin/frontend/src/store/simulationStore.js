@@ -29,6 +29,21 @@ const initialControl = {
   vibrationPulseId: 0
 };
 
+const initialDumpCycle = {
+  active: false,
+  stage: 'IDLE',
+  startedAt: 0,
+  elapsedMs: 0,
+  tailgateOpen: false,
+  cycleComplete: false,
+  residueScenario: false,
+  vibrationCycle: 0,
+  scanActive: false,
+  warningLights: false,
+  cycleBadge: false,
+  autoRotatePaused: false
+};
+
 const initialHistory = {
   load: [],
   acoustic: [],
@@ -84,6 +99,7 @@ export const useSimulationStore = create((set) => ({
   cycleNumber: 48,
   cycleSeconds: 0,
   control: initialControl,
+  dumpCycle: initialDumpCycle,
   fusedScore: 0,
   fusedConfidence: 0,
   predictionResult: 'EMPTY',
@@ -136,6 +152,7 @@ export const useSimulationStore = create((set) => ({
         isPaused: true,
         command: 'STOP_RESET'
       },
+      dumpCycle: { ...initialDumpCycle },
       cycleSeconds: 0
     })),
 
@@ -251,6 +268,28 @@ export const useSimulationStore = create((set) => ({
 
   ingestTelemetry: (payload) =>
     set((prev) => {
+      if (prev.dumpCycle?.active) {
+        return {
+          latencyMs: payload.latency_ms ?? prev.latencyMs,
+          history: [...prev.history.slice(-59), {
+            t: payload.timestamp,
+            acoustic: payload.sensors?.acoustic_db ?? prev.sensors.acoustic_db,
+            vibration: payload.sensors?.vibration_g ?? prev.sensors.vibration_g,
+            thermal: payload.sensors?.thermal_c ?? prev.sensors.thermal_c,
+            lidar: payload.sensors?.lidar_mm ?? prev.sensors.lidar_mm,
+            risk: prev.fusion?.residue_risk ?? 0
+          }],
+          historyBySignal: {
+            load: [...prev.historyBySignal.load.slice(-29), prev.sensorReadings.loadCell.value ?? 0],
+            acoustic: [...prev.historyBySignal.acoustic.slice(-29), prev.sensorReadings.acoustic.value ?? 0],
+            camera: [...prev.historyBySignal.camera.slice(-29), prev.sensorReadings.camera.value ?? 0],
+            ultrasonic: [...prev.historyBySignal.ultrasonic.slice(-29), prev.sensorReadings.ultrasonic.value ?? 0],
+            fused: [...prev.historyBySignal.fused.slice(-29), prev.fusion?.residue_risk ?? 0],
+            timestamps: [...prev.historyBySignal.timestamps.slice(-29), payload.timestamp ?? Date.now()]
+          }
+        };
+      }
+
       const incomingZones = payload.zones ?? prev.zones;
       const cycleProgress = Number(payload.state?.cycle_progress ?? prev.state.cycle_progress ?? 0);
       const previousCycleProgress = Number(prev.state?.cycle_progress ?? 0);

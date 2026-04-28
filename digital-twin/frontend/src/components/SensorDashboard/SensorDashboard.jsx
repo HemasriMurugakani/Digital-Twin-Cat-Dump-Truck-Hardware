@@ -22,7 +22,7 @@ export default function SensorDashboard() {
   const miniSeries = useMemo(() => series.slice(-30).map((s, i) => ({ ...s, idx: i })), [series]);
 
   return (
-    <aside className="h-full w-full max-w-[320px] border-l border-[#1F1F26] bg-[#0F0F12] p-4 text-[var(--text-primary)] overflow-y-auto">
+    <aside className="flex h-full w-full flex-col overflow-hidden border-l border-[#1F1F26] bg-[#0F0F12] p-4 text-[var(--text-primary)]">
       <div>
         <div className="flex items-start justify-between">
           <div>
@@ -34,7 +34,7 @@ export default function SensorDashboard() {
           </div>
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-2">
           <div className="grid grid-cols-1 gap-2">
             <div className="text-xs text-[var(--text-muted)]">Acoustic</div>
             <MiniSensorChart data={miniSeries} dataKey="acoustic" stroke="#F5A800" threshold={null} />
@@ -53,15 +53,11 @@ export default function SensorDashboard() {
 
           <ZoneHeatmap zoneValues={zones} />
 
-          <div>
-            <AIDecisionLog />
-          </div>
+          <AIDecisionLog />
 
-          <div>
-            <SystemFlowDiagram />
-          </div>
+          <SystemFlowDiagram />
 
-          <div className="mt-3">
+          <div className="mt-2">
             <FusionMeter confidence={fusion.confidence} residueRisk={fusion.residue_risk} action={fusion.action} />
           </div>
         </div>

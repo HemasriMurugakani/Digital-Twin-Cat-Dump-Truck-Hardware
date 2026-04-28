@@ -8,6 +8,11 @@ export default function AlertBanner() {
   const triggerVibration = useSimulationStore((s) => s.triggerVibration);
   const acknowledgeAlert = useSimulationStore((s) => s.acknowledgeAlert);
   const triggerCorrection = useSimulationStore((s) => s.triggerCorrection);
+  const zoneDetails = useSimulationStore((s) => s.zoneDetails);
+
+  const activeZones = Object.entries(zoneDetails || {})
+    .filter(([, value]) => value?.residue)
+    .map(([zone]) => zone);
 
   if (!alert) return null;
 
@@ -40,11 +45,13 @@ export default function AlertBanner() {
           <div className="flex items-center justify-between">
             <div>
               <p className="heading text-sm text-red-300">⚠ CARRY-BACK DETECTED</p>
-              <p className="mt-1 text-xs text-[var(--text-primary)]">Residual material found in FL, RL zones</p>
+              <p className="mt-1 text-xs text-[var(--text-primary)]">
+                Residual material found in {activeZones.length ? activeZones.join(', ') : 'current zones'}
+              </p>
             </div>
             <div className="text-right text-xs text-[var(--text-muted)]">
-              <div className="font-semibold">5.3 t</div>
-              <div className="text-[var(--text-muted)]">94% confidence</div>
+              <div className="font-semibold">{(fusion.residue_risk * 6.1).toFixed(1)} t</div>
+              <div className="text-[var(--text-muted)]">{Math.round(fusion.confidence * 100)}% confidence</div>
             </div>
           </div>
 

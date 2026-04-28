@@ -20,12 +20,12 @@ const DUMP_STATE = {
 };
 
 function getDumpState(phase, alert) {
-  if (alert && (phase === 'DUMP_RAISE' || phase === 'DUMP_HOLD')) {
+  if (phase === 'CARRY_BACK_DETECTED' || phase === 'CORRECTING') {
     return DUMP_STATE.CORRECTION;
   }
-  if (phase === 'DUMP_RAISE') return DUMP_STATE.DUMPING;
-  if (phase === 'DUMP_HOLD') return DUMP_STATE.HELD;
-  if (phase === 'DUMP_LOWER') return DUMP_STATE.LOWERING;
+  if (phase === 'DUMPING') return DUMP_STATE.DUMPING;
+  if (phase === 'DETECTING' || phase === 'VERIFYING') return DUMP_STATE.HELD;
+  if (phase === 'CLEAR') return DUMP_STATE.LOWERING;
   return DUMP_STATE.IDLE;
 }
 
@@ -42,8 +42,9 @@ export default function DumpBed() {
   const [displayAngle, setDisplayAngle] = useState(0);
   const [displayExtension, setDisplayExtension] = useState(0);
 
-  const phase = useSimulationStore((s) => s.state.phase);
+  const phase = useSimulationStore((s) => s.dumpState ?? s.state.phase);
   const alert = useSimulationStore((s) => s.alert);
+  const dumpCycle = useSimulationStore((s) => s.dumpCycle);
   const setBedKinematics = useSimulationStore((s) => s.setBedKinematics);
 
   const [{ baseAngle }, springApi] = useSpring(() => ({
@@ -108,8 +109,11 @@ export default function DumpBed() {
 
     const currentAngle = MathUtils.clamp(springAngle + correctionOverlay, 0, 54);
     const hydraulicExtension = MathUtils.clamp(currentAngle / 52, 0, 1);
-    const tailgateOpen =
-      dumpState === DUMP_STATE.DUMPING
+    const isCorrection = dumpCycle?.stage === 'CORRECTING';
+    const jitter = isCorrection ? Math.sin(stateElapsedRef.current * 60) * 0.05 : 0;
+    const tailgateOpen = dumpCycle?.tailgateOpen
+      ? 1
+      : dumpState === DUMP_STATE.DUMPING
         ? MathUtils.clamp((stateElapsedRef.current - 0.5) / 0.5, 0, 1)
         : currentAngle > 12
           ? 1
@@ -117,6 +121,8 @@ export default function DumpBed() {
 
     if (!bedRef.current) return;
     bedRef.current.rotation.z = MathUtils.degToRad(currentAngle);
+    bedRef.current.position.x = -7.5 + jitter;
+    bedRef.current.position.y = 4 + jitter * 0.45;
     if (tailgateRef.current) {
       tailgateRef.current.rotation.z = MathUtils.degToRad(-48 * tailgateOpen);
     }
@@ -198,6 +204,9 @@ export default function DumpBed() {
         ))}
 
         <group>
+            {dumpCycle?.stage === 'CORRECTING' && (
+              <pointLight position={[3.8, 4.4, 0]} color="#EF4444" intensity={1.8 + Math.abs(Math.sin(stateElapsedRef.current * 24)) * 0.9} distance={10} />
+            )}
           <ResidueOverlay />
         </group>
       </group>

@@ -78,6 +78,8 @@ function CameraSensor({ visionScore, cameraDetected, isScanning }) {
     if (cone) {
       cone.visible = isScanning;
       cone.material.opacity = isScanning ? 0.04 : 0;
+      cone.rotation.z = isScanning ? Math.sin(elapsed * Math.PI * 2) * (Math.PI / 9) : 0;
+      cone.scale.setScalar(isScanning ? 1 + Math.sin(elapsed * 5) * 0.06 : 1);
     }
   });
 
@@ -105,7 +107,7 @@ function CameraSensor({ visionScore, cameraDetected, isScanning }) {
       </mesh>
       <mesh ref={coneRef} position={[0.8, -0.05, 0]} rotation={[0, -Math.PI / 2, 0]} visible={isScanning}>
         <coneGeometry args={[2.5, 4, 32, 1, true]} />
-        <meshBasicMaterial color="#00FF88" transparent opacity={0.04} side={2} depthWrite={false} />
+        <meshBasicMaterial color="#00FF88" transparent opacity={0.06} side={2} depthWrite={false} />
       </mesh>
       <Html occlude distanceFactor={10} position={[0, 0.65, 0]} center>
         <div className="sensor-label">
@@ -114,6 +116,38 @@ function CameraSensor({ visionScore, cameraDetected, isScanning }) {
           <span className="sensor-bar" style={{ width: `${Math.round(visionScore * 100)}%` }} />
         </div>
       </Html>
+    </group>
+  );
+}
+
+function CameraScanLines({ active }) {
+  const lineRefs = [useRef(null), useRef(null), useRef(null)];
+
+  useFrame(({ clock }) => {
+    const elapsed = clock.elapsedTime;
+    lineRefs.forEach((ref, index) => {
+      const line = ref.current;
+      if (!line) return;
+      line.visible = active;
+      const sweep = Math.sin(elapsed * 1.1 + index * 0.8) * 2.4;
+      line.position.x = 2.1 + sweep;
+      line.material.opacity = active ? 0.12 + Math.max(0, Math.sin(elapsed * 4 + index)) * 0.1 : 0;
+    });
+  });
+
+  return (
+    <group position={[2.2, 0.28, 0]}>
+      {[0, 1, 2].map((index) => (
+        <line key={`scan-line-${index}`} ref={lineRefs[index]} visible={active} position={[0, 0.02 + index * 0.08, 0]}>
+          <bufferGeometry>
+            <bufferAttribute
+              attach="attributes-position"
+              args={[new Float32Array([-4.2, 0, -2.8 + index * 2.8, 4.2, 0, -2.8 + index * 2.8]), 3]}
+            />
+          </bufferGeometry>
+          <lineBasicMaterial color="#22C55E" transparent opacity={0.1} depthTest={false} />
+        </line>
+      ))}
     </group>
   );
 }
@@ -171,12 +205,27 @@ function AcousticSensor({ acousticDeviation, materialType, isDumping, isScanning
 
 function UltrasonicSensor({ position, distanceCm, isScanning, index }) {
   const beamRef = useRef(null);
+  const ringRefs = [useRef(null), useRef(null), useRef(null)];
 
   useEffect(() => {
     const line = beamRef.current;
     if (!line) return;
     line.computeLineDistances?.();
   }, [distanceCm]);
+
+  useFrame(({ clock }) => {
+    const elapsed = clock.elapsedTime;
+    ringRefs.forEach((ref, ringIndex) => {
+      const ring = ref.current;
+      if (!ring) return;
+      const stagger = ringIndex * 0.3;
+      const localTime = (elapsed + stagger) % 0.9;
+      const ringScale = 0.8 + localTime * 2.2;
+      ring.visible = isScanning;
+      ring.scale.setScalar(ringScale);
+      ring.material.opacity = isScanning ? Math.max(0, 0.7 - localTime * 0.9) : 0;
+    });
+  });
 
   return (
     <group position={position} rotation={[0, position[2] > 0 ? -Math.PI / 2 : Math.PI / 2, 0]}>
@@ -188,6 +237,12 @@ function UltrasonicSensor({ position, distanceCm, isScanning, index }) {
         <coneGeometry args={[1.5, 2.5, 16, 1, true]} />
         <meshBasicMaterial color="#F59E0B" transparent opacity={0.06} side={2} depthWrite={false} />
       </mesh>
+      {[0, 1, 2].map((ringIndex) => (
+        <mesh key={`us-ring-${index}-${ringIndex}`} ref={ringRefs[ringIndex]} position={[0.2, 0, 0]} rotation={[Math.PI / 2, 0, 0]} visible={isScanning}>
+          <torusGeometry args={[0.2 + ringIndex * 0.16, 0.02, 6, 24]} />
+          <meshBasicMaterial color="#F59E0B" transparent opacity={0.6} depthWrite={false} />
+        </mesh>
+      ))}
       <line ref={beamRef}>
         <bufferGeometry>
           <bufferAttribute
@@ -251,7 +306,8 @@ function LoadCell({ position, value }) {
 export default function SensorMarkers() {
   const sensors = useSimulationStore((s) => s.sensors);
   const fusion = useSimulationStore((s) => s.fusion);
-  const phase = useSimulationStore((s) => s.state.phase);
+  const phase = useSimulationStore((s) => s.dumpState ?? s.state.phase);
+  const dumpCycle = useSimulationStore((s) => s.dumpCycle);
   const bedAngle = useSimulationStore((s) => s.bedAngle ?? s.state.bed_angle_deg ?? 0);
   const hydraulicExtension = useSimulationStore((s) => s.hydraulicExtension ?? 0);
   const scenario = useSimulationStore((s) => s.scenario);
@@ -301,13 +357,14 @@ export default function SensorMarkers() {
     [fusion.confidence, fusion.residue_risk, hydraulicExtension, materialBias, scenarioBias, sensors.acoustic_db, sensors.vibration_g]
   );
 
-  const isScanning = phase === 'DUMP_RAISE' || phase === 'DUMP_HOLD';
-  const isDumping = phase === 'DUMP_RAISE' || phase === 'DUMP_HOLD' || phase === 'DUMP_LOWER';
-  const cameraDetected = fusion.residue_risk > 0.45;
+  const isScanning = dumpCycle?.scanActive || phase === 'DUMPING' || phase === 'DETECTING' || phase === 'CARRY_BACK_DETECTED';
+  const isDumping = phase === 'DUMPING' || phase === 'DETECTING' || phase === 'CARRY_BACK_DETECTED' || phase === 'CORRECTING';
+  const cameraDetected = dumpCycle?.warningLights || fusion.residue_risk > 0.45;
 
   return (
     <group>
       <CameraSensor visionScore={visionScore} cameraDetected={cameraDetected} isScanning={isScanning} />
+      <CameraScanLines active={isScanning} />
       <AcousticSensor
         acousticDeviation={acousticDeviation}
         materialType={materialType}
@@ -347,7 +404,7 @@ export default function SensorMarkers() {
         <div className="sensor-label">
           <span className="sensor-name">CAMERA STATUS</span>
           <span className="sensor-value">{cameraDetected ? 'RESIDUE DETECTED' : 'CLEAR'}</span>
-          <span className="sensor-status">{phase}</span>
+          <span className="sensor-status">{dumpCycle?.active ? phase : phase}</span>
         </div>
       </Html>
     </group>

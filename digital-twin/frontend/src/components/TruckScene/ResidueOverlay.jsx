@@ -31,6 +31,7 @@ function getZoneTone(zone) {
 export default function ResidueOverlay() {
   const zones = useSimulationStore((s) => s.zoneDetails);
   const showZones = useSimulationStore((s) => s.showZones);
+  const dumpCycle = useSimulationStore((s) => s.dumpCycle);
   const [pulseTime, setPulseTime] = useState(0);
 
   const entries = useMemo(() => Object.entries(zonePositions), []);
@@ -40,20 +41,38 @@ export default function ResidueOverlay() {
     setPulseTime(clock.elapsedTime);
   });
 
+  const clearActive = dumpCycle?.stage === 'CLEAR' || dumpCycle?.cycleBadge;
+
   return (
     <group>
+      {clearActive && (
+        <mesh position={[3.8, 0.72, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={12}>
+          <planeGeometry args={[9.5, 3.6]} />
+          <meshBasicMaterial
+            color="#22C55E"
+            transparent
+            opacity={0.18 + Math.max(0, Math.sin(pulseTime * 3)) * 0.14}
+            depthWrite={false}
+            depthTest={false}
+          />
+        </mesh>
+      )}
       {entries.map(([zone, pos]) => {
         const zoneData = zones?.[zone] ?? { residue: false, tonnes: 0, confidence: 0 };
         const tone = getZoneTone(zoneData);
         const visible = zoneData.residue || showZones;
-        const pulseOpacity = tone.critical ? Math.max(0, tone.opacity + Math.sin(pulseTime * 4) * 0.08) : tone.opacity;
+        const pulseOpacity = clearActive
+          ? Math.max(0.12, 0.24 - Math.sin(pulseTime * 5) * 0.05)
+          : tone.critical
+            ? Math.max(0, tone.opacity + Math.sin(pulseTime * 4) * 0.08)
+            : tone.opacity;
         const planeOpacity = zoneData.residue ? pulseOpacity : showZones ? 0.08 : 0;
         return (
           <group key={zone} position={pos}>
             <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={10}>
               <planeGeometry args={[2.5, 4]} />
               <meshBasicMaterial
-                color={tone.color}
+                color={clearActive ? '#22C55E' : tone.color}
                 transparent
                 opacity={planeOpacity}
                 depthWrite={false}
@@ -97,6 +116,13 @@ export default function ResidueOverlay() {
         <Html center position={[4.0, 0.9, 0]} distanceFactor={12}>
           <div className="rounded border border-[#EF4444]/50 bg-black/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-[#EF4444]">
             Residue Detected
+          </div>
+        </Html>
+      )}
+      {clearActive && (
+        <Html center position={[3.8, 2.1, 0]} distanceFactor={12}>
+          <div className="rounded border border-[#22C55E]/50 bg-black/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-[#22C55E]">
+            CLEAR ✓
           </div>
         </Html>
       )}

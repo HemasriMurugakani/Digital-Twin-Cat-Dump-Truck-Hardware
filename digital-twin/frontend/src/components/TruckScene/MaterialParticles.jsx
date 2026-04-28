@@ -93,8 +93,9 @@ export default function MaterialParticles() {
 
   const bedAngle = useSimulationStore((s) => s.bedAngle ?? s.state.bed_angle_deg ?? 0);
   const hydraulicExtension = useSimulationStore((s) => s.hydraulicExtension ?? 0);
-  const phase = useSimulationStore((s) => s.state.phase);
+  const phase = useSimulationStore((s) => s.dumpState ?? s.state.phase);
   const alert = useSimulationStore((s) => s.alert);
+  const dumpCycle = useSimulationStore((s) => s.dumpCycle);
   const scenario = useSimulationStore((s) => s.scenario);
   const materialProfile = useSimulationStore((s) => s.materialProfile);
 
@@ -123,10 +124,10 @@ export default function MaterialParticles() {
     }
   }, [stickyChance, scenario, materialProfile]);
 
-  const isDumping = phase === 'DUMP_RAISE';
-  const isHeld = phase === 'DUMP_HOLD';
-  const isLowering = phase === 'DUMP_LOWER';
-  const isCorrection = alert && (phase === 'DUMP_RAISE' || phase === 'DUMP_HOLD');
+  const isDumping = phase === 'DUMPING' || phase === 'DETECTING';
+  const isHeld = phase === 'DETECTING' || phase === 'VERIFYING';
+  const isLowering = phase === 'CLEAR';
+  const isCorrection = dumpCycle?.warningLights || alert || phase === 'CARRY_BACK_DETECTED' || phase === 'CORRECTING';
   const effectiveAngle = MathUtils.clamp(bedAngle, 0, 52);
 
   useFrame((_, delta) => {
@@ -191,7 +192,8 @@ export default function MaterialParticles() {
       particle.position[2] += particle.velocity[2] * delta * 60;
 
       const tailgateCrossed = particle.position[2] > BED_WIDTH * 0.42 || particle.position[0] > BED_LENGTH * 0.45;
-      if ((isDumping || isLowering || isCorrection) && tailgateCrossed) {
+      const tailgateVisible = dumpCycle?.tailgateOpen || isDumping || isLowering || isCorrection;
+      if (tailgateVisible && tailgateCrossed) {
         particle.fallen = true;
         particle.attached = false;
       }
