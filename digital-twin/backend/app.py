@@ -1,3 +1,7 @@
+"""
+Section 11: SCBES Backend with Bayesian Fusion and Explicit State Machine
+"""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -32,6 +36,10 @@ def health():
 
 @app.post('/predict')
 def predict():
+    """
+    Main prediction endpoint: simulate cycle, fuse sensors, evaluate zones.
+    Returns enhanced fusion result with reasoning, sensor contributions, and zone analysis.
+    """
     start = perf_counter()
     payload = request.get_json(silent=True) or {}
 
@@ -52,6 +60,7 @@ def predict():
 
     state_machine.decay_vibration_boost(dt)
 
+    # Call fusion engine with new interface
     fusion = fusion_engine.evaluate(
         sensors=sensors,
         bed_angle_deg=cycle_state.bed_angle_deg,
@@ -74,10 +83,12 @@ def predict():
             'cycle_progress': round(cycle_state.cycle_progress, 4),
             'bed_angle_deg': round(cycle_state.bed_angle_deg, 3),
             'elapsed_s': round(cycle_state.elapsed_s, 3),
+            'machine_state': state_machine.current_state,  # New: explicit state
+            'state_duration_s': round(state_machine.get_state_duration(), 3),  # New: time in state
         },
         'material_profile': state_machine.material_profile,
         'sensors': sensors,
-        'fusion': fusion,
+        'fusion': fusion,  # Now includes reasoning, sensor_contributions, zone_analysis
         'zones': zones,
         'latency_ms': round(elapsed_ms, 3),
         'alert': fusion['action'] == 'ENGAGE_ELIMINATION_SEQUENCE',
@@ -91,10 +102,26 @@ def predict():
             'action': fusion['action'],
             'rationale': fusion['rationale'],
             'risk': fusion['residue_risk'],
+            'reasoning': fusion.get('reasoning', []),  # New: explainability
         },
     )
 
     return jsonify(response)
+
+
+@app.post('/zones')
+def map_zones_endpoint():
+    """
+    Zone mapping endpoint: analyze zones and determine corrective action.
+    Request: {zones: {FL: {residue: bool, tonnes: float}, ...}}
+    Response: {active_zones, total_tonnes, corrective_action, zones: {...}}
+    """
+    payload = request.get_json(silent=True) or {}
+    zones = payload.get('zones', {})
+    
+    zone_analysis = fusion_engine._map_zones(zones)
+    
+    return jsonify(zone_analysis)
 
 
 @socketio.on('connect')
@@ -106,6 +133,7 @@ def on_connect():
             'action': 'CONNECTED',
             'rationale': 'Dashboard connected to SCBES backend stream.',
             'risk': 0.0,
+            'reasoning': ['Backend socket connected and listening for telemetry'],
         },
     )
 
