@@ -16,6 +16,23 @@ const initialZones = {
   RR: 0
 };
 
+const zoneKeys = Object.keys(initialZones);
+
+function buildZoneDetails(zoneScores = initialZones) {
+  return zoneKeys.reduce((acc, zone) => {
+    const score = Number(zoneScores?.[zone] ?? 0);
+    const residue = score >= 0.55;
+
+    acc[zone] = {
+      residue,
+      tonnes: residue ? Number((score * 3).toFixed(1)) : 0,
+      confidence: Number(score.toFixed(4))
+    };
+
+    return acc;
+  }, {});
+}
+
 export const useSimulationStore = create((set) => ({
   connected: false,
   scenario: 'normal',
@@ -28,6 +45,8 @@ export const useSimulationStore = create((set) => ({
   },
   sensors: initialSensors,
   zones: initialZones,
+  zoneDetails: buildZoneDetails(initialZones),
+  showZones: false,
   fusion: {
     confidence: 0,
     residue_risk: 0,
@@ -44,6 +63,8 @@ export const useSimulationStore = create((set) => ({
   setConnected: (connected) => set({ connected }),
 
   setScenario: (scenario) => set({ scenario }),
+
+  toggleShowZones: () => set((state) => ({ showZones: !state.showZones })),
 
   setBedKinematics: ({ bedAngle, hydraulicExtension }) =>
     set((prev) => {
@@ -67,6 +88,7 @@ export const useSimulationStore = create((set) => ({
 
   ingestTelemetry: (payload) =>
     set((prev) => {
+      const incomingZones = payload.zones ?? prev.zones;
       const point = {
         t: payload.timestamp,
         acoustic: payload.sensors.acoustic_db,
@@ -95,11 +117,12 @@ export const useSimulationStore = create((set) => ({
             prev.state.speed ??
             0
         },
-        sensors: payload.sensors,
-        zones: payload.zones,
-        fusion: payload.fusion,
-        latencyMs: payload.latency_ms,
-        alert: payload.alert,
+        sensors: payload.sensors ?? prev.sensors,
+        zones: incomingZones,
+        zoneDetails: buildZoneDetails(incomingZones),
+        fusion: payload.fusion ?? prev.fusion,
+        latencyMs: payload.latency_ms ?? prev.latencyMs,
+        alert: payload.alert ?? prev.alert,
         history: [...prev.history.slice(-59), point]
       };
     }),

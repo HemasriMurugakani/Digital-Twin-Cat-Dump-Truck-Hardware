@@ -197,7 +197,7 @@ export default function DumpBed() {
           </mesh>
         ))}
 
-        <group position={[4, 0.2, 0]} scale={[2.7, 1, 4]}>
+        <group>
           <ResidueOverlay />
         </group>
       </group>

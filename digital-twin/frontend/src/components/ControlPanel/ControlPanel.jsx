@@ -4,6 +4,8 @@ import DumpCycleTimer from './DumpCycleTimer';
 
 export default function ControlPanel() {
   const connected = useSimulationStore((s) => s.connected);
+  const showZones = useSimulationStore((s) => s.showZones);
+  const toggleShowZones = useSimulationStore((s) => s.toggleShowZones);
 
   return (
     <div>
@@ -22,6 +24,24 @@ export default function ControlPanel() {
       <div className="mt-4">
         <ScenarioSelector />
         <DumpCycleTimer />
+
+        <div className="mt-3 rounded-md border border-[var(--border)] bg-[var(--bg-surface)] p-3">
+          <p className="heading text-sm text-[var(--yellow)]">Zone Overlay</p>
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
+            Show zone outlines even when no residue is present.
+          </p>
+          <button
+            type="button"
+            onClick={toggleShowZones}
+            className={`mt-3 w-full rounded-md border px-3 py-2 text-sm transition ${
+              showZones
+                ? 'border-[var(--yellow)] bg-[rgba(245,168,0,0.14)] text-[var(--text-primary)]'
+                  : 'border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:border-[var(--yellow-dim)]'
+            }`}
+          >
+            {showZones ? 'Hide Zones' : 'Show Zones'}
+          </button>
+        </div>
       </div>
     </div>
   );
