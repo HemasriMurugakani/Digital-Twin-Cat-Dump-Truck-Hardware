@@ -36,72 +36,30 @@ function getCellDistance(bedAngle, baseDistance, offset) {
   return Math.max(24, baseDistance - bedAngle * 1.05 + offset);
 }
 
-function SensorStyles() {
-  return (
-    <style>{`
-      .sensor-label {
-        background: rgba(8, 8, 9, 0.92);
-        border: 1px solid #F5A800;
-        border-radius: 6px;
-        padding: 6px 10px;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 11px;
-        color: #F0F0F0;
-        min-width: 120px;
-        pointer-events: none;
-        white-space: nowrap;
-        box-shadow: 0 0 12px rgba(245, 168, 0, 0.2);
-      }
-      .sensor-name {
-        display: block;
-        color: #6B7280;
-        font-size: 10px;
-      }
-      .sensor-value {
-        display: block;
-        color: #F5A800;
-        font-size: 14px;
-        font-weight: bold;
-      }
-      .sensor-status {
-        display: block;
-        color: #9CA3AF;
-        font-size: 10px;
-        margin-top: 2px;
-      }
-      .sensor-bar {
-        display: block;
-        height: 3px;
-        background: #F5A800;
-        margin-top: 4px;
-        border-radius: 2px;
-        transition: width 0.3s;
-      }
-      .load-label {
-        min-width: 160px;
-      }
-      .load-bars {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 4px;
-        margin-top: 6px;
-      }
-      .load-bar {
-        height: 6px;
-        border-radius: 999px;
-        background: rgba(255,255,255,0.1);
-        overflow: hidden;
-      }
-      .load-bar > span {
-        display: block;
-        height: 100%;
-        border-radius: inherit;
-        background: #F5A800;
-        box-shadow: 0 0 8px rgba(245, 168, 0, 0.45);
-      }
-    `}</style>
-  );
+const SENSOR_MARKER_CSS_ID = 'scbes-sensor-markers-css';
+const SENSOR_MARKER_CSS = `
+.sensor-label {
+  background: rgba(8, 8, 9, 0.92);
+  border: 1px solid #F5A800;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #F0F0F0;
+  min-width: 120px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 0 12px rgba(245, 168, 0, 0.2);
 }
+.sensor-name { display: block; color: #6B7280; font-size: 10px; }
+.sensor-value { display: block; color: #F5A800; font-size: 14px; font-weight: bold; }
+.sensor-status { display: block; color: #9CA3AF; font-size: 10px; margin-top: 2px; }
+.sensor-bar { display: block; height: 3px; background: #F5A800; margin-top: 4px; border-radius: 2px; transition: width 0.3s; }
+.load-label { min-width: 160px; }
+.load-bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 6px; }
+.load-bar { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.1); overflow: hidden; }
+.load-bar > span { display: block; height: 100%; border-radius: inherit; background: #F5A800; box-shadow: 0 0 8px rgba(245, 168, 0, 0.45); }
+`;
 
 function CameraSensor({ visionScore, cameraDetected, isScanning }) {
   const ringRef = useRef(null);
@@ -165,7 +123,7 @@ function AcousticSensor({ acousticDeviation, materialType, isDumping, isScanning
 
   useFrame(({ clock }) => {
     const elapsed = clock.elapsedTime;
-    waveRefs.current.forEach((ref, index) => {
+    waveRefs.forEach((ref, index) => {
       const mesh = ref.current;
       if (!mesh) return;
       const wavePhase = (elapsed + index * 0.5) % 1.5;
@@ -298,6 +256,18 @@ export default function SensorMarkers() {
   const hydraulicExtension = useSimulationStore((s) => s.hydraulicExtension ?? 0);
   const scenario = useSimulationStore((s) => s.scenario);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (document.getElementById(SENSOR_MARKER_CSS_ID)) return;
+    const el = document.createElement('style');
+    el.id = SENSOR_MARKER_CSS_ID;
+    el.innerHTML = SENSOR_MARKER_CSS;
+    document.head.appendChild(el);
+    return () => {
+      el.remove();
+    };
+  }, []);
+
   const visionScore = MathUtils.clamp(1 - fusion.residue_risk * 0.85 + fusion.confidence * 0.12, 0, 1);
   const acousticDeviation = Math.max(0, Math.abs(sensors.acoustic_db - 62)).toFixed(1);
   const materialType =
@@ -326,8 +296,6 @@ export default function SensorMarkers() {
 
   return (
     <group>
-      <SensorStyles />
-
       <CameraSensor visionScore={visionScore} cameraDetected={cameraDetected} isScanning={isScanning} />
       <AcousticSensor
         acousticDeviation={acousticDeviation}

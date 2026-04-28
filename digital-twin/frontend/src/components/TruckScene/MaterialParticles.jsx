@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Color, MathUtils, MeshStandardMaterial } from 'three';
+import { Color, MathUtils, MeshStandardMaterial, Object3D } from 'three';
 import { useSimulationStore } from '../../store/simulationStore';
 
 const PARTICLE_COUNT = 800;
@@ -79,27 +79,8 @@ export default function MaterialParticles() {
   const phase = useSimulationStore((s) => s.state.phase);
   const alert = useSimulationStore((s) => s.alert);
 
-  const colors = useMemo(() => {
-    const buffer = new Float32Array(PARTICLE_COUNT * 3);
-    for (let i = 0; i < PARTICLE_COUNT; i += 1) {
-      const c = particles.current[i].color;
-      buffer[i * 3 + 0] = c.r;
-      buffer[i * 3 + 1] = c.g;
-      buffer[i * 3 + 2] = c.b;
-    }
-    return buffer;
-  }, []);
-
-  const transforms = useMemo(() => {
-    const data = new Float32Array(PARTICLE_COUNT * 3);
-    for (let i = 0; i < PARTICLE_COUNT; i += 1) {
-      const particle = particles.current[i];
-      data[i * 3 + 0] = particle.position[0];
-      data[i * 3 + 1] = particle.position[1];
-      data[i * 3 + 2] = particle.position[2];
-    }
-    return data;
-  }, []);
+  // temp object used to build instance matrices
+  const tempObj = useRef(new Object3D());
 
   const isDumping = phase === 'DUMP_RAISE';
   const isHeld = phase === 'DUMP_HOLD';
@@ -110,14 +91,10 @@ export default function MaterialParticles() {
   useFrame((_, delta) => {
     const mesh = meshRef.current;
     if (!mesh) return;
-
-    const positionAttribute = mesh.geometry.getAttribute('position');
-    const colorAttribute = mesh.geometry.getAttribute('color');
     correctionTimer.current += delta;
 
     for (let i = 0; i < PARTICLE_COUNT; i += 1) {
       const particle = particles.current[i];
-      const baseIndex = i * 3;
       const px = particle.position[0];
       const py = particle.position[1];
       const pz = particle.position[2];
@@ -130,9 +107,14 @@ export default function MaterialParticles() {
         particle.velocity[1] = 0;
         particle.velocity[0] = 0;
         particle.velocity[2] = 0;
-        positionAttribute.array[baseIndex + 0] = particle.position[0];
-        positionAttribute.array[baseIndex + 1] = particle.position[1];
-        positionAttribute.array[baseIndex + 2] = particle.position[2];
+        const obj = tempObj.current;
+        obj.position.set(particle.position[0], particle.position[1], particle.position[2]);
+        obj.scale.setScalar(particle.size);
+        obj.updateMatrix();
+        mesh.setMatrixAt(i, obj.matrix);
+        if (mesh.setColorAt) {
+          mesh.setColorAt(i, particle.color);
+        }
         continue;
       }
 
@@ -200,26 +182,30 @@ export default function MaterialParticles() {
         particle.settled = true;
       }
 
-      positionAttribute.array[baseIndex + 0] = particle.position[0];
-      positionAttribute.array[baseIndex + 1] = particle.position[1];
-      positionAttribute.array[baseIndex + 2] = particle.position[2];
+      // update instance transform
+      const obj = tempObj.current;
+      obj.position.set(particle.position[0], particle.position[1], particle.position[2]);
+      obj.scale.setScalar(particle.size);
+      obj.updateMatrix();
+      mesh.setMatrixAt(i, obj.matrix);
+      if (mesh.setColorAt) {
+        mesh.setColorAt(i, particle.color);
+      }
     }
 
     if (isCorrection && correctionTimer.current >= CORRECTION_IMPULSE_INTERVAL) {
       correctionTimer.current = 0;
     }
 
-    positionAttribute.needsUpdate = true;
-    colorAttribute.needsUpdate = true;
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   });
 
   return (
     <group position={[1.65, 2.55, 0]} visible>
-      <instancedMesh ref={meshRef} args={[undefined, undefined, PARTICLE_COUNT]} castShadow receiveShadow>
+      <instancedMesh ref={meshRef} args={[null, null, PARTICLE_COUNT]} castShadow receiveShadow>
         <dodecahedronGeometry args={[1, 0]} />
         <primitive attach="material" object={sharedMaterial} />
-        <instancedBufferAttribute attach="geometry-attributes-color" args={[colors, 3]} />
-        <bufferAttribute attach="attributes-position" args={[transforms, 3]} />
       </instancedMesh>
     </group>
   );

@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import { useSimulationStore } from '../store/simulationStore';
 
 const socket = io('http://localhost:5001', {
-  transports: ['websocket'],
+  transports: ['polling'],
   autoConnect: false
 });
 

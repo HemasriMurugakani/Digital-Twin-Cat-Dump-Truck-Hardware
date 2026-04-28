@@ -15,7 +15,8 @@ from zone_mapper import ZoneMapper
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'scbes-digital-twin-secret'
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
+# Use threading async mode to avoid eventlet issues on newer Python versions
+socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
 
 state_machine = DumpCycleStateMachine()
 simulator = SensorSimulator()
