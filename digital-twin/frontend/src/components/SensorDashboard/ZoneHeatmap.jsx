@@ -1,31 +1,65 @@
+import { useMemo } from 'react';
+
 const zones = ['FL', 'FC', 'FR', 'RL', 'RC', 'RR'];
 
 function zoneColor(value) {
-  if (value > 0.72) return 'rgba(239,68,68,0.85)';
-  if (value > 0.5) return 'rgba(245,158,11,0.85)';
-  if (value > 0.3) return 'rgba(59,130,246,0.75)';
-  return 'rgba(34,197,94,0.65)';
+  if (value > 0.72) return '#DC2626';
+  if (value > 0.5) return '#F59E0B';
+  if (value > 0.3) return '#3B82F6';
+  return '#16A34A';
 }
 
-export default function ZoneHeatmap({ zoneValues }) {
+export default function ZoneHeatmap({ zoneValues = {} }) {
+  const values = useMemo(() => zones.map((z) => ({ key: z, v: zoneValues[z] ?? 0 })), [zoneValues]);
+
   return (
     <div className="rounded-md border border-[var(--border)] bg-[var(--bg-surface)] p-3">
       <p className="heading text-sm text-[var(--yellow)]">Bed Residue Zone Map</p>
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        {zones.map((z) => {
-          const value = zoneValues[z] ?? 0;
+      <svg viewBox="0 0 240 140" className="mt-3 w-full">
+        {/* trapezoid bed outline */}
+        <defs>
+          <linearGradient id="bedGrad" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#111113" />
+            <stop offset="100%" stopColor="#0b0b0d" />
+          </linearGradient>
+        </defs>
+        <polygon points="20,12 220,12 200,128 40,128" fill="url(#bedGrad)" stroke="#1F1F26" strokeWidth="1.5" />
+
+        {/* front wall label */}
+        <text x="120" y="8" textAnchor="middle" fontSize="10" fill="#9CA3AF">FRONT WALL</text>
+
+        {/* zones: top row FL FC FR */}
+        {values.slice(0, 3).map((z, i) => {
+          const x = 40 + i * 64;
+          const y = 24;
+          const color = zoneColor(z.v);
           return (
-            <div
-              key={z}
-              className="rounded-md border border-[var(--border)] p-2 text-center"
-              style={{ backgroundColor: zoneColor(value) }}
-            >
-              <p className="heading text-xs text-black/80">{z}</p>
-              <p className="data text-sm text-black/85">{(value * 100).toFixed(1)}%</p>
-            </div>
+            <g key={z.key}>
+              <rect x={x} y={y} width="60" height="44" rx="6" ry="6" fill={color} opacity="0.9" stroke="#0b0b0d" />
+              <text x={x + 8} y={y + 14} fontSize="10" fill="#000">{z.key}</text>
+              <text x={x + 8} y={y + 30} fontSize="12" fill="#000" fontWeight="700">{(z.v * 10).toFixed(1)} t</text>
+              <text x={x + 8} y={y + 40} fontSize="10" fill="#000">{Math.round(z.v * 100)}%</text>
+            </g>
           );
         })}
-      </div>
+
+        {/* bottom row RL RC RR */}
+        {values.slice(3, 6).map((z, i) => {
+          const x = 40 + i * 64;
+          const y = 76;
+          const color = zoneColor(z.v);
+          return (
+            <g key={z.key}>
+              <rect x={x} y={y} width="60" height="44" rx="6" ry="6" fill={color} opacity="0.9" stroke="#0b0b0d" />
+              <text x={x + 8} y={y + 14} fontSize="10" fill="#000">{z.key}</text>
+              <text x={x + 8} y={y + 30} fontSize="12" fill="#000" fontWeight="700">{(z.v * 10).toFixed(1)} t</text>
+              <text x={x + 8} y={y + 40} fontSize="10" fill="#000">{Math.round(z.v * 100)}%</text>
+            </g>
+          );
+        })}
+
+        <text x="120" y="138" textAnchor="middle" fontSize="10" fill="#9CA3AF">TAILGATE</text>
+      </svg>
     </div>
   );
 }

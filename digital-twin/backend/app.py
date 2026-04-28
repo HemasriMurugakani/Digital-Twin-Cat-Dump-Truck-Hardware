@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from time import perf_counter
 
+import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_socketio import SocketIO
@@ -36,13 +37,20 @@ def predict():
 
     scenario = payload.get('scenario', 'normal')
     dt = float(payload.get('dt', 1.5))
+    control = payload.get('control') or {}
+
+    state_machine.apply_control(control)
 
     cycle_state = state_machine.step(dt)
     sensors = simulator.generate_readings(
         scenario=scenario,
         bed_angle_deg=cycle_state.bed_angle_deg,
         phase=cycle_state.phase,
+        material_profile=state_machine.material_profile,
+        vibration_boost=state_machine.get_vibration_boost(),
     ).as_dict()
+
+    state_machine.decay_vibration_boost(dt)
 
     fusion = fusion_engine.evaluate(
         sensors=sensors,
@@ -65,7 +73,9 @@ def predict():
             'phase_progress': round(cycle_state.phase_progress, 4),
             'cycle_progress': round(cycle_state.cycle_progress, 4),
             'bed_angle_deg': round(cycle_state.bed_angle_deg, 3),
+            'elapsed_s': round(cycle_state.elapsed_s, 3),
         },
+        'material_profile': state_machine.material_profile,
         'sensors': sensors,
         'fusion': fusion,
         'zones': zones,
@@ -101,4 +111,5 @@ def on_connect():
 
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5001, debug=True)
+    port = int(os.environ.get('PORT', '5001'))
+    socketio.run(app, host='0.0.0.0', port=port, debug=True)

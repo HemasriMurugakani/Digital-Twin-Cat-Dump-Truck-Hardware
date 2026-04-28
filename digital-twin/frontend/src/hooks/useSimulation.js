@@ -1,34 +1,41 @@
-import { useEffect } from 'react';
+import { useRef } from 'react';
 import { useSimulationStore } from '../store/simulationStore';
 
-export function useSimulation() {
-  const scenario = useSimulationStore((s) => s.scenario);
-  const ingestTelemetry = useSimulationStore((s) => s.ingestTelemetry);
+// Start a polling loop outside of React hooks to avoid impacting hook ordering.
+// Returns a stop function.
+export function startSimulationPolling(pollInterval = 1500) {
+  let mounted = true;
+  const store = useSimulationStore;
+  const BACKEND = import.meta.env.VITE_BACKEND_URL || `http://localhost:${import.meta.env.VITE_BACKEND_PORT || 5002}`;
 
-  useEffect(() => {
-    let isMounted = true;
+  async function tick() {
+    try {
+      const state = store.getState();
+      const { scenario, materialProfile, control, ingestTelemetry, clearControlCommand } = state;
 
-    const tick = async () => {
-      try {
-        const response = await fetch('http://localhost:5001/predict', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ scenario, dt: 1.5 })
-        });
-        if (!response.ok || !isMounted) return;
-        const data = await response.json();
-        ingestTelemetry(data);
-      } catch (error) {
-        // Keep UI responsive if backend momentarily disconnects.
+      const response = await fetch(`${BACKEND}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario, material_profile: materialProfile, control, dt: 1.5 })
+      });
+
+      if (!response.ok || !mounted) return;
+      const data = await response.json();
+      ingestTelemetry(data);
+      if (control && control.command) {
+        clearControlCommand();
       }
-    };
+    } catch (err) {
+      // swallow network errors to keep UI responsive
+    }
+  }
 
-    tick();
-    const id = setInterval(tick, 1500);
+  // run immediately and then on interval
+  tick();
+  const id = setInterval(tick, pollInterval);
 
-    return () => {
-      isMounted = false;
-      clearInterval(id);
-    };
-  }, [ingestTelemetry, scenario]);
+  return () => {
+    mounted = false;
+    clearInterval(id);
+  };
 }

@@ -255,6 +255,7 @@ export default function SensorMarkers() {
   const bedAngle = useSimulationStore((s) => s.bedAngle ?? s.state.bed_angle_deg ?? 0);
   const hydraulicExtension = useSimulationStore((s) => s.hydraulicExtension ?? 0);
   const scenario = useSimulationStore((s) => s.scenario);
+  const materialProfile = useSimulationStore((s) => s.materialProfile);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -271,23 +272,33 @@ export default function SensorMarkers() {
   const visionScore = MathUtils.clamp(1 - fusion.residue_risk * 0.85 + fusion.confidence * 0.12, 0, 1);
   const acousticDeviation = Math.max(0, Math.abs(sensors.acoustic_db - 62)).toFixed(1);
   const materialType =
-    scenario === 'sticky_clay'
-      ? 'STICKY CLAY'
-      : scenario === 'wet_ore'
-        ? 'WET ORE'
-        : scenario === 'cold_shift'
-          ? 'COLD SHIFT ORE'
-          : 'ORE MIX';
-  const ultrasonicValue = Math.max(24, 180 - bedAngle * 1.4 - hydraulicExtension * 18 - fusion.residue_risk * 32);
-  const loadTonnes = Math.max(0, 11.5 + fusion.residue_risk * 8.5 + sensors.vibration_g * 2.2 + hydraulicExtension * 3.1);
+    materialProfile === 'wet_clay'
+      ? 'WET CLAY'
+      : materialProfile === 'fine_ore'
+        ? 'FINE ORE'
+        : materialProfile === 'dry_rock'
+          ? 'DRY ROCK'
+          : 'MIXED LOAD';
+  const materialBias =
+    materialProfile === 'wet_clay' ? 0.18 : materialProfile === 'dry_rock' ? -0.12 : materialProfile === 'fine_ore' ? 0.04 : 0.08;
+  const scenarioBias =
+    scenario === 'full_residue' ? 0.2 : scenario === 'partial_residue' ? 0.08 : scenario === 'empty_truck' ? -0.1 : 0.0;
+  const ultrasonicValue = Math.max(
+    24,
+    180 - bedAngle * 1.4 - hydraulicExtension * 18 - fusion.residue_risk * 32 + scenarioBias * 16
+  );
+  const loadTonnes = Math.max(
+    0,
+    10.8 + fusion.residue_risk * 9.2 + sensors.vibration_g * 2.2 + hydraulicExtension * 3.1 + materialBias * 6
+  );
   const loadValues = useMemo(
     () => [
-      MathUtils.clamp(0.22 + fusion.residue_risk * 0.55 + hydraulicExtension * 0.24, 0, 1),
-      MathUtils.clamp(0.18 + sensors.vibration_g * 0.42 + hydraulicExtension * 0.16, 0, 1),
-      MathUtils.clamp(0.2 + (1 - fusion.confidence) * 0.5 + hydraulicExtension * 0.2, 0, 1),
-      MathUtils.clamp(0.16 + fusion.residue_risk * 0.45 + sensors.acoustic_db / 180, 0, 1)
+      MathUtils.clamp(0.22 + fusion.residue_risk * 0.55 + hydraulicExtension * 0.24 + scenarioBias * 0.2, 0, 1),
+      MathUtils.clamp(0.18 + sensors.vibration_g * 0.42 + hydraulicExtension * 0.16 + materialBias * 0.18, 0, 1),
+      MathUtils.clamp(0.2 + (1 - fusion.confidence) * 0.5 + hydraulicExtension * 0.2 + scenarioBias * 0.15, 0, 1),
+      MathUtils.clamp(0.16 + fusion.residue_risk * 0.45 + sensors.acoustic_db / 180 + materialBias * 0.12, 0, 1)
     ],
-    [fusion.confidence, fusion.residue_risk, hydraulicExtension, sensors.acoustic_db, sensors.vibration_g]
+    [fusion.confidence, fusion.residue_risk, hydraulicExtension, materialBias, scenarioBias, sensors.acoustic_db, sensors.vibration_g]
   );
 
   const isScanning = phase === 'DUMP_RAISE' || phase === 'DUMP_HOLD';

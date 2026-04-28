@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Color, MathUtils, MeshStandardMaterial, Object3D } from 'three';
 import { useSimulationStore } from '../../store/simulationStore';
@@ -17,8 +17,25 @@ const GRAVITY = 0.012;
 const CORRECTION_IMPULSE_INTERVAL = 0.04;
 const CORRECTION_IMPULSE_MAGNITUDE = 0.3;
 
-function makeParticle(index) {
-  const sticky = Math.random() < 0.15;
+const scenarioStickiness = {
+  empty_truck: 0.06,
+  partial_residue: 0.22,
+  full_residue: 0.42,
+  normal: 0.22,
+  wet_ore: 0.28,
+  sticky_clay: 0.44,
+  cold_shift: 0.18
+};
+
+const materialStickiness = {
+  wet_clay: 0.36,
+  fine_ore: 0.18,
+  dry_rock: 0.06,
+  mixed: 0.22
+};
+
+function makeParticle(index, stickyChance) {
+  const sticky = Math.random() < stickyChance;
   const baseColor = BASE_COLORS[index % BASE_COLORS.length].clone();
   const color = sticky ? baseColor.clone().multiplyScalar(0.82) : baseColor;
 
@@ -54,8 +71,8 @@ function getCellIndex(value, min, size) {
   return Math.floor(normalized * GRID_SIZE);
 }
 
-function createParticleState() {
-  return Array.from({ length: PARTICLE_COUNT }, (_, index) => makeParticle(index));
+function createParticleState(stickyChance) {
+  return Array.from({ length: PARTICLE_COUNT }, (_, index) => makeParticle(index, stickyChance));
 }
 
 function createHeightGrid() {
@@ -78,9 +95,33 @@ export default function MaterialParticles() {
   const hydraulicExtension = useSimulationStore((s) => s.hydraulicExtension ?? 0);
   const phase = useSimulationStore((s) => s.state.phase);
   const alert = useSimulationStore((s) => s.alert);
+  const scenario = useSimulationStore((s) => s.scenario);
+  const materialProfile = useSimulationStore((s) => s.materialProfile);
 
   // temp object used to build instance matrices
   const tempObj = useRef(new Object3D());
+
+  const stickyChance = MathUtils.clamp(
+    (scenarioStickiness[scenario] ?? scenarioStickiness.partial_residue) +
+      (materialStickiness[materialProfile] ?? materialStickiness.mixed),
+    0.02,
+    0.7
+  );
+  const materialGravityScale =
+    materialProfile === 'wet_clay' ? 0.84 : materialProfile === 'dry_rock' ? 1.16 : 1.0;
+  const materialDumpFactor =
+    materialProfile === 'wet_clay' ? 0.72 : materialProfile === 'dry_rock' ? 1.12 : 1.0;
+
+  useEffect(() => {
+    particles.current = createParticleState(stickyChance);
+    heightGrid.current = createHeightGrid();
+    correctionTimer.current = 0;
+    const mesh = meshRef.current;
+    if (mesh) {
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
+  }, [stickyChance, scenario, materialProfile]);
 
   const isDumping = phase === 'DUMP_RAISE';
   const isHeld = phase === 'DUMP_HOLD';
@@ -119,7 +160,7 @@ export default function MaterialParticles() {
       }
 
       if (isDumping || isLowering || isHeld || isCorrection) {
-        const slideSpeed = (effectiveAngle / 52) * DUMP_FACTOR;
+        const slideSpeed = (effectiveAngle / 52) * DUMP_FACTOR * materialDumpFactor;
         particle.velocity[2] += slideSpeed * delta * 60;
 
         if (particle.sticky && effectiveAngle < STICK_ANGLE) {
@@ -141,7 +182,7 @@ export default function MaterialParticles() {
         }
       }
 
-      particle.velocity[1] -= GRAVITY;
+      particle.velocity[1] -= GRAVITY * materialGravityScale;
       particle.velocity[0] += (Math.random() - 0.5) * 0.002;
       particle.velocity[2] += (Math.random() - 0.5) * 0.002;
 

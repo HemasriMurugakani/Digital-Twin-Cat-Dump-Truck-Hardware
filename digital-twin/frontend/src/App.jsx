@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useEffect } from 'react';
 import AlertBanner from './components/AlertBanner';
 import SystemFlowDiagram from './components/SystemFlowDiagram';
 import LatencyBadge from './components/LatencyBadge';
@@ -6,11 +7,15 @@ import TruckScene from './components/TruckScene/TruckScene';
 import ControlPanel from './components/ControlPanel/ControlPanel';
 import SensorDashboard from './components/SensorDashboard/SensorDashboard';
 import { useSocket } from './hooks/useSocket';
-import { useSimulation } from './hooks/useSimulation';
+import { startSimulationPolling } from './hooks/useSimulation';
 
 export default function App() {
   useSocket();
-  useSimulation();
+  // start background telemetry polling outside of React hook ordering
+  useEffect(() => {
+    const stop = startSimulationPolling();
+    return stop;
+  }, []);
 
   return (
     <div className="min-h-screen px-4 py-4 md:px-6 md:py-6">
@@ -33,16 +38,18 @@ export default function App() {
 
       <AlertBanner />
 
-      <main className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(280px,320px)_1fr_minmax(360px,430px)]">
+      <main className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[280px_minmax(0,1fr)_minmax(360px,430px)]">
         <motion.section
           initial={{ x: -18, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ delay: 0.05, duration: 0.45 }}
-          className="panel rounded-xl p-4"
+          className="panel h-[calc(100vh-8rem)] overflow-hidden rounded-xl p-0"
         >
-          <ControlPanel />
-          <div className="mt-4">
-            <SystemFlowDiagram />
+          <div className="flex h-full flex-col">
+            <ControlPanel />
+            <div className="mt-auto border-t border-[#1F1F26] p-4">
+              <SystemFlowDiagram />
+            </div>
           </div>
         </motion.section>
 
@@ -50,7 +57,7 @@ export default function App() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1, duration: 0.6 }}
-          className="panel relative h-[420px] overflow-hidden rounded-xl md:h-[560px]"
+          className="panel relative h-[420px] overflow-hidden rounded-xl md:h-[calc(100vh-8rem)]"
         >
           <TruckScene />
         </motion.section>

@@ -16,6 +16,12 @@ const initialZones = {
   RR: 0
 };
 
+const initialControl = {
+  isPaused: false,
+  command: null,
+  vibrationPulseId: 0
+};
+
 const zoneKeys = Object.keys(initialZones);
 
 function buildZoneDetails(zoneScores = initialZones) {
@@ -35,18 +41,23 @@ function buildZoneDetails(zoneScores = initialZones) {
 
 export const useSimulationStore = create((set) => ({
   connected: false,
-  scenario: 'normal',
+  scenario: 'partial_residue',
+  materialProfile: 'mixed',
   state: {
     phase: 'LOADING',
     phase_progress: 0,
     cycle_progress: 0,
     bed_angle_deg: 0,
+    elapsed_s: 0,
     speed: 0
   },
   sensors: initialSensors,
   zones: initialZones,
   zoneDetails: buildZoneDetails(initialZones),
   showZones: false,
+  cycleNumber: 48,
+  cycleSeconds: 0,
+  control: initialControl,
   fusion: {
     confidence: 0,
     residue_risk: 0,
@@ -63,6 +74,53 @@ export const useSimulationStore = create((set) => ({
   setConnected: (connected) => set({ connected }),
 
   setScenario: (scenario) => set({ scenario }),
+
+  setMaterialProfile: (materialProfile) => set({ materialProfile }),
+
+  startDumpCycle: () =>
+    set((state) => ({
+      control: {
+        ...state.control,
+        isPaused: false,
+        command: 'START_DUMP_CYCLE'
+      }
+    })),
+
+  pauseCycle: () =>
+    set((state) => ({
+      control: {
+        ...state.control,
+        isPaused: !state.control.isPaused,
+        command: state.control.isPaused ? 'START_DUMP_CYCLE' : 'PAUSE'
+      }
+    })),
+
+  stopAndResetCycle: () =>
+    set((state) => ({
+      control: {
+        ...state.control,
+        isPaused: true,
+        command: 'STOP_RESET'
+      },
+      cycleSeconds: 0
+    })),
+
+  triggerVibration: () =>
+    set((state) => ({
+      control: {
+        ...state.control,
+        vibrationPulseId: state.control.vibrationPulseId + 1,
+        command: 'TRIGGER_VIBRATION'
+      }
+    })),
+
+  clearControlCommand: () =>
+    set((state) => ({
+      control: {
+        ...state.control,
+        command: null
+      }
+    })),
 
   toggleShowZones: () => set((state) => ({ showZones: !state.showZones })),
 
@@ -89,6 +147,9 @@ export const useSimulationStore = create((set) => ({
   ingestTelemetry: (payload) =>
     set((prev) => {
       const incomingZones = payload.zones ?? prev.zones;
+      const cycleProgress = Number(payload.state?.cycle_progress ?? prev.state.cycle_progress ?? 0);
+      const previousCycleProgress = Number(prev.state?.cycle_progress ?? 0);
+      const wrappedCycle = previousCycleProgress > 0.9 && cycleProgress < 0.2;
       const point = {
         t: payload.timestamp,
         acoustic: payload.sensors.acoustic_db,
@@ -120,6 +181,9 @@ export const useSimulationStore = create((set) => ({
         sensors: payload.sensors ?? prev.sensors,
         zones: incomingZones,
         zoneDetails: buildZoneDetails(incomingZones),
+        materialProfile: payload.material_profile ?? prev.materialProfile,
+        cycleNumber: wrappedCycle ? prev.cycleNumber + 1 : prev.cycleNumber,
+        cycleSeconds: Number(payload.state?.elapsed_s ?? prev.cycleSeconds ?? 0),
         fusion: payload.fusion ?? prev.fusion,
         latencyMs: payload.latency_ms ?? prev.latencyMs,
         alert: payload.alert ?? prev.alert,
@@ -136,5 +200,18 @@ export const useSimulationStore = create((set) => ({
         },
         ...prev.decisionLog
       ].slice(0, 32)
+    }))
+  ,
+
+  acknowledgeAlert: () => set(() => ({ alert: false }))
+  ,
+
+  triggerCorrection: () =>
+    set((state) => ({
+      control: {
+        ...state.control,
+        vibrationPulseId: state.control.vibrationPulseId + 1,
+        command: 'TRIGGER_CORRECTION'
+      }
     }))
 }));
