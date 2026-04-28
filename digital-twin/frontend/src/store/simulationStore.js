@@ -7,6 +7,13 @@ const initialSensors = {
   lidar_mm: 0
 };
 
+const initialSensorReadings = {
+  loadCell: { value: 0, tonnes: 0, confidence: 0 },
+  acoustic: { value: 0, frequency: 847, deviation: 0, confidence: 0 },
+  camera: { value: 0, zones: [], confidence: 0 },
+  ultrasonic: { value: 0, distanceCm: 180, confidence: 0 }
+};
+
 const initialZones = {
   FL: 0,
   FC: 0,
@@ -20,6 +27,15 @@ const initialControl = {
   isPaused: false,
   command: null,
   vibrationPulseId: 0
+};
+
+const initialHistory = {
+  load: [],
+  acoustic: [],
+  camera: [],
+  ultrasonic: [],
+  fused: [],
+  timestamps: []
 };
 
 const zoneKeys = Object.keys(initialZones);
@@ -41,7 +57,16 @@ function buildZoneDetails(zoneScores = initialZones) {
 
 export const useSimulationStore = create((set) => ({
   connected: false,
+  truckId: 'CAT-793-11',
+  truckModel: 'Caterpillar 793F',
+  dumpState: 'IDLE',
+  bedAngle: 0,
+  hydraulicExtension: 0,
+  vibrationActive: false,
+  vibrationAmplitude: 0,
   scenario: 'partial_residue',
+  materialType: 'Wet clay / fine ore',
+  moisture: 18.4,
   materialProfile: 'mixed',
   state: {
     phase: 'LOADING',
@@ -52,12 +77,17 @@ export const useSimulationStore = create((set) => ({
     speed: 0
   },
   sensors: initialSensors,
+  sensorReadings: initialSensorReadings,
   zones: initialZones,
   zoneDetails: buildZoneDetails(initialZones),
   showZones: false,
   cycleNumber: 48,
   cycleSeconds: 0,
   control: initialControl,
+  fusedScore: 0,
+  fusedConfidence: 0,
+  predictionResult: 'EMPTY',
+  predictionStatus: 'LOW',
   fusion: {
     confidence: 0,
     residue_risk: 0,
@@ -66,9 +96,11 @@ export const useSimulationStore = create((set) => ({
   },
   latencyMs: 0,
   alert: false,
-  bedAngle: 0,
-  hydraulicExtension: 0,
+  showParticles: true,
+  autoRotate: false,
   history: [],
+  historyBySignal: initialHistory,
+  aiLog: [],
   decisionLog: [],
 
   setConnected: (connected) => set({ connected }),
@@ -76,6 +108,8 @@ export const useSimulationStore = create((set) => ({
   setScenario: (scenario) => set({ scenario }),
 
   setMaterialProfile: (materialProfile) => set({ materialProfile }),
+
+  setMaterial: (materialType) => set({ materialType }),
 
   startDumpCycle: () =>
     set((state) => ({
@@ -107,6 +141,9 @@ export const useSimulationStore = create((set) => ({
 
   triggerVibration: () =>
     set((state) => ({
+      dumpState: 'CORRECTING',
+      vibrationActive: true,
+      vibrationAmplitude: 1,
       control: {
         ...state.control,
         vibrationPulseId: state.control.vibrationPulseId + 1,
@@ -123,6 +160,74 @@ export const useSimulationStore = create((set) => ({
     })),
 
   toggleShowZones: () => set((state) => ({ showZones: !state.showZones })),
+
+  toggleZones: () => set((state) => ({ showZones: !state.showZones })),
+
+  stopReset: () =>
+    set(() => ({
+      dumpState: 'IDLE',
+      bedAngle: 0,
+      hydraulicExtension: 0,
+      vibrationActive: false,
+      vibrationAmplitude: 0,
+      control: {
+        ...initialControl
+      }
+    })),
+
+  startDump: () =>
+    set((state) => ({
+      dumpState: 'DUMPING',
+      cycleNumber: state.cycleNumber + 1,
+      control: {
+        ...state.control,
+        command: 'START_DUMP_CYCLE'
+      }
+    })),
+
+  updateSensors: (data) =>
+    set((state) => ({
+      sensors: { ...state.sensors, ...data },
+      sensorReadings: {
+        ...state.sensorReadings,
+        ...(data.loadCell ? { loadCell: { ...state.sensorReadings.loadCell, ...data.loadCell } } : {}),
+        ...(data.acoustic ? { acoustic: { ...state.sensorReadings.acoustic, ...data.acoustic } } : {}),
+        ...(data.camera ? { camera: { ...state.sensorReadings.camera, ...data.camera } } : {}),
+        ...(data.ultrasonic ? { ultrasonic: { ...state.sensorReadings.ultrasonic, ...data.ultrasonic } } : {})
+      }
+    })),
+
+  updateZones: (zones) =>
+    set(() => ({
+      zones,
+      zoneDetails: buildZoneDetails(zones)
+    })),
+
+  updateFusion: (result) =>
+    set(() => ({
+      fusedScore: result.score ?? result.confidence ?? 0,
+      fusedConfidence: result.confidence ?? 0,
+      predictionResult: result.result ?? (result.residue_risk >= 0.5 ? 'RESIDUE' : 'EMPTY'),
+      predictionStatus: result.status ?? (result.confidence >= 0.75 ? 'HIGH' : result.confidence >= 0.45 ? 'MEDIUM' : 'LOW')
+    })),
+
+  addLogEntry: (entry) =>
+    set((state) => ({
+      aiLog: [entry, ...(state.aiLog ?? [])].slice(0, 100)
+    })),
+
+  updateHistory: (sample) =>
+    set((state) => ({
+      history: [...state.history.slice(-29), sample],
+      historyBySignal: {
+        load: [...state.historyBySignal.load.slice(-29), sample.load ?? 0],
+        acoustic: [...state.historyBySignal.acoustic.slice(-29), sample.acoustic ?? 0],
+        camera: [...state.historyBySignal.camera.slice(-29), sample.camera ?? 0],
+        ultrasonic: [...state.historyBySignal.ultrasonic.slice(-29), sample.ultrasonic ?? 0],
+        fused: [...state.historyBySignal.fused.slice(-29), sample.fused ?? 0],
+        timestamps: [...state.historyBySignal.timestamps.slice(-29), sample.timestamp ?? Date.now()]
+      }
+    })),
 
   setBedKinematics: ({ bedAngle, hydraulicExtension }) =>
     set((prev) => {
@@ -193,6 +298,15 @@ export const useSimulationStore = create((set) => ({
 
   appendDecisionLog: (log) =>
     set((prev) => ({
+      aiLog: [
+        {
+          timestamp: log.timestamp,
+          action: log.action,
+          rationale: log.rationale,
+          risk: log.risk
+        },
+        ...prev.aiLog
+      ].slice(0, 100),
       decisionLog: [
         {
           id: `${log.timestamp}-${Math.random().toString(16).slice(2, 8)}`,
@@ -200,8 +314,7 @@ export const useSimulationStore = create((set) => ({
         },
         ...prev.decisionLog
       ].slice(0, 32)
-    }))
-  ,
+    })),
 
   acknowledgeAlert: () => set(() => ({ alert: false }))
   ,

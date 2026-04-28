@@ -15,12 +15,12 @@ export function useSocket() {
   const appendDecisionLog = useSimulationStore((s) => s.appendDecisionLog);
 
   useEffect(() => {
-    socket.connect();
-
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
     socket.on('telemetry', ingestTelemetry);
     socket.on('decision_log', appendDecisionLog);
+
+    socket.connect();
 
     return () => {
       socket.off('connect');
