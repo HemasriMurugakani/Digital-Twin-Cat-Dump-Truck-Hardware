@@ -303,7 +303,7 @@ function LoadCell({ position, value }) {
   );
 }
 
-export default function SensorMarkers() {
+export default function SensorMarkers({ degradedMode = false }) {
   const sensors = useSimulationStore((s) => s.sensors);
   const fusion = useSimulationStore((s) => s.fusion);
   const phase = useSimulationStore((s) => s.dumpState ?? s.state.phase);
@@ -363,8 +363,12 @@ export default function SensorMarkers() {
 
   return (
     <group>
+            {!degradedMode && (
+              <>
       <CameraSensor visionScore={visionScore} cameraDetected={cameraDetected} isScanning={isScanning} />
       <CameraScanLines active={isScanning} />
+              </>
+            )}
       <AcousticSensor
         acousticDeviation={acousticDeviation}
         materialType={materialType}

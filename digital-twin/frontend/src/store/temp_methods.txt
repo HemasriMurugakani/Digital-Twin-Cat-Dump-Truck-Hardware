@@ -1,0 +1,13 @@
+
+  // Demo Mode Methods
+  degradedMode: false,
+  
+  setDegradedMode: (enabled) => set(() => ({ degradedMode: enabled })),
+
+  setMaterialProfile: (profile) =>
+    set((prev) => ({
+      materialProfile: {
+        ...prev.materialProfile,
+        ...profile
+      }
+    })),

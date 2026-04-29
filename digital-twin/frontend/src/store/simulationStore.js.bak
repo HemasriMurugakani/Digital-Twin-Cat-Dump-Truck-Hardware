@@ -83,11 +83,6 @@ export const useSimulationStore = create((set) => ({
   materialType: 'Wet clay / fine ore',
   moisture: 18.4,
   materialProfile: 'mixed',
-  materialProfileDetails: {
-    density: 0,
-    moisture: 0,
-    load_tonnes: 0
-  },
   state: {
     phase: 'LOADING',
     phase_progress: 0,
@@ -129,14 +124,6 @@ export const useSimulationStore = create((set) => ({
   setScenario: (scenario) => set({ scenario }),
 
   setMaterialProfile: (materialProfile) => set({ materialProfile }),
-
-  setMaterialProfileDetails: (profileDetails) =>
-    set((state) => ({
-      materialProfileDetails: {
-        ...state.materialProfileDetails,
-        ...profileDetails
-      }
-    })),
 
   setMaterial: (materialType) => set({ materialType }),
 
@@ -214,8 +201,6 @@ export const useSimulationStore = create((set) => ({
         command: 'START_DUMP_CYCLE'
       }
     })),
-
-  setDegradedMode: (enabled) => set(() => ({ degradedMode: enabled })),
 
   updateSensors: (data) =>
     set((state) => ({

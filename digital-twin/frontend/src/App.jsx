@@ -9,6 +9,8 @@ import { startSimulationPolling } from './hooks/useSimulation';
 import { useDumpCycleSequence } from './hooks/useDumpCycleSequence';
 import { useSimulationStore } from './store/simulationStore';
 
+import DemoControl from './components/DemoControl';
+
 function TopBar() {
   const connected = useSimulationStore((s) => s.connected);
   const latencyMs = useSimulationStore((s) => s.latencyMs);
@@ -125,6 +127,7 @@ export default function App() {
           <SensorDashboard />
         </motion.section>
         </main>
+        <DemoControl />
       </div>
     </div>
   );

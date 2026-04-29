@@ -185,12 +185,18 @@ export default function TruckScene() {
   const phase = useSimulationStore((s) => s.state.phase);
   const alert = useSimulationStore((s) => s.alert);
   const dumpCycle = useSimulationStore((s) => s.dumpCycle);
+    const degradedMode = useSimulationStore((s) => s.degradedMode);
   const [preset, setPreset] = useState('ISO');
   const controlsRef = useRef(null);
 
   return (
     <div className="relative h-full w-full overflow-hidden">
       <CameraPresetPanel preset={preset} onPresetChange={setPreset} />
+            {degradedMode && (
+              <div className="pointer-events-none absolute right-4 top-20 z-20 rounded-lg border border-[#EF4444] bg-[rgba(239,68,68,0.1)] px-4 py-2 text-xs font-semibold text-[#EF4444] shadow-[0_0_18px_rgba(239,68,68,0.2)]">
+                ⚠ CAMERA: OFFLINE
+              </div>
+            )}
       <PerformanceBadge />
       <Canvas
         shadows
@@ -209,6 +215,7 @@ export default function TruckScene() {
           <DumpBed />
           <MaterialParticles />
           <SensorMarkers />
+                    <SensorMarkers degradedMode={degradedMode} />
           <TruckLabels />
         </group>
 
