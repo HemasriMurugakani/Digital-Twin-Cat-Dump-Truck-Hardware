@@ -3,6 +3,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
+        display: ['Rajdhani', 'sans-serif'],
         heading: ['Rajdhani', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
         body: ['DM Sans', 'sans-serif']

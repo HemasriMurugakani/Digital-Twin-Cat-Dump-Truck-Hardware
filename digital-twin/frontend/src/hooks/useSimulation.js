@@ -6,7 +6,7 @@ import { useSimulationStore } from '../store/simulationStore';
 export function startSimulationPolling(pollInterval = 1500) {
   let mounted = true;
   const store = useSimulationStore;
-  const BACKEND = import.meta.env.VITE_BACKEND_URL || `http://localhost:${import.meta.env.VITE_BACKEND_PORT || 5002}`;
+  const BACKEND = import.meta.env.VITE_BACKEND_URL || `http://localhost:${import.meta.env.VITE_BACKEND_PORT || 5001}`;
 
   async function tick() {
     try {

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { useSimulationStore } from '../store/simulationStore';
 
-const BACKEND = import.meta.env.VITE_BACKEND_URL || `http://localhost:${import.meta.env.VITE_BACKEND_PORT || 5002}`;
+const BACKEND = import.meta.env.VITE_BACKEND_URL || `http://localhost:${import.meta.env.VITE_BACKEND_PORT || 5001}`;
 
 const socket = io(BACKEND, {
   transports: ['polling'],
