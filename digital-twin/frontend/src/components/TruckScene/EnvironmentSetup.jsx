@@ -109,8 +109,8 @@ export default function EnvironmentSetup() {
   const groundTexture = useMemo(() => {
     const size = 64;
     const data = new Uint8Array(size * size * 3);
-    const c1 = new Color('#3d3220');
-    const c2 = new Color('#6e5530');
+    const c1 = new Color('#1a1a1a');
+    const c2 = new Color('#2a2520');
     for (let i = 0; i < size * size; i += 1) {
       const mix = Math.random() * 0.9;
       const c = c1.clone().lerp(c2, mix);
@@ -134,54 +134,39 @@ export default function EnvironmentSetup() {
 
   return (
     <>
-      <ambientLight intensity={0.3} color="#b0c4d8" />
+      <ambientLight intensity={0.28} color="#a8bdd1" />
       <directionalLight
-        intensity={2.8}
-        color="#fff5e0"
+        intensity={2.6}
+        color="#f8ead0"
         position={[30, 50, 20]}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
         shadow-camera-far={100}
         shadow-camera-near={0.5}
+        shadow-bias={-0.00025}
       />
-      <directionalLight intensity={0.6} color="#4a6080" position={[-20, 10, -15]} />
-      <pointLight intensity={0.4} color="#c87530" position={[0, 0.5, 0]} distance={12} />
-      <hemisphereLight args={['#87ceeb', '#3d2b1a', 0.5]} />
+      <directionalLight intensity={0.75} color="#4a6080" position={[-20, 10, -15]} />
+      <pointLight intensity={0.38} color="#c87530" position={[0, 0.5, 0]} distance={12} />
+      <hemisphereLight args={['#1a2a3a', '#1a1208', 0.36]} />
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[240, 240]} />
-        <meshStandardMaterial color="#3d3220" map={groundTexture} roughness={0.98} metalness={0.0} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <cylinderGeometry args={[12, 12, 0.02, 32]} />
-        <meshBasicMaterial color="#8b6914" transparent opacity={0.35} />
+        <meshStandardMaterial color="#1a1a18" map={groundTexture} roughness={0.98} metalness={0.0} />
       </mesh>
 
       <gridHelper ref={gridRef} args={[40, 40, '#2a2a2a', '#2a2a2a']} position={[0, 0.02, 0]} />
 
       <mesh>
         <sphereGeometry args={[400, 16, 16]} />
-        <meshBasicMaterial color="#2c3e50" side={BackSide} />
+        <meshBasicMaterial color="#0a1520" side={BackSide} />
       </mesh>
       <mesh position={[0, -120, 0]}>
         <sphereGeometry args={[399.5, 16, 16]} />
-        <meshBasicMaterial color="#8b7355" side={BackSide} transparent opacity={0.55} />
+        <meshBasicMaterial color="#12100e" side={BackSide} transparent opacity={0.55} />
       </mesh>
 
-      <group>
-        {[
-          [-30, 5, -35, 14],
-          [24, 7, -30, 16],
-          [35, 6, 20, 18],
-          [-34, 5, 25, 15]
-        ].map(([x, y, z, s], idx) => (
-          <mesh key={`mount-${idx}`} position={[x, y, z]} castShadow receiveShadow>
-            <coneGeometry args={[s, s * 1.3, 4]} />
-            <meshStandardMaterial color="#4a3520" roughness={0.95} metalness={0.05} />
-          </mesh>
-        ))}
-      </group>
+
 
       <StarsField />
       <DustMotes />

@@ -92,10 +92,10 @@ function gaugeTone(value) {
 
 function SectionCard({ title, subtitle, children, className = '' }) {
   return (
-    <section className={`rounded-[22px] border border-[#1F1F26] bg-[#161619] p-4 transition hover:border-[#2a2a31] hover:shadow-[0_0_0_1px_rgba(245,168,0,0.05)] ${className}`}>
-      <div className="mb-4">
-        <p className="heading text-[11px] tracking-[0.28em] text-[var(--yellow)]">{title}</p>
-        {subtitle ? <p className="mt-1 text-xs text-[var(--text-muted)]">{subtitle}</p> : null}
+    <section className={`rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-3 transition hover:border-[#2a3548] ${className}`}>
+      <div className="mb-3">
+        <p className="heading text-xs tracking-[0.26em] text-[var(--yellow)]">{title}</p>
+        {subtitle ? <p className="mt-0.5 text-xs text-[var(--text-muted)]">{subtitle}</p> : null}
       </div>
       {children}
     </section>
@@ -104,33 +104,34 @@ function SectionCard({ title, subtitle, children, className = '' }) {
 
 function SensorCard({ icon, label, value, unit, confidence, trend, detail, tone }) {
   const trendGlyph = trend > 0.01 ? '↑' : trend < -0.01 ? '↓' : '→';
+  const trendColor = trend > 0.01 ? 'var(--red)' : trend < -0.01 ? 'var(--green)' : 'var(--text-muted)';
+  const confPct = Math.round(clamp(confidence) * 100);
+
   return (
-    <div className="group rounded-xl border border-[#23232b] bg-[#0f0f12] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition hover:border-[#2a2a32] hover:bg-[#161619]">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-muted)]">{label}</p>
-          <p className="mt-1 text-[11px] text-[var(--text-muted)]">{detail}</p>
-        </div>
-        <div className="text-lg group-hover:scale-110 transition-transform">{icon}</div>
+    <div className="group rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-2.5 transition hover:border-[#2a3548] hover:brightness-110"
+         style={{ borderLeftWidth: '3px', borderLeftColor: tone }}>
+      {/* Row 1: icon + label */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm">{icon}</span>
+        <span className="text-xs uppercase tracking-[0.15em] text-[var(--text-muted)]">{label}</span>
+        <span className="text-[11px] text-[var(--text-muted)] ml-auto">{detail}</span>
       </div>
-      <div className="mt-3 flex items-end justify-between gap-2">
-        <div>
-          <p className="data text-[24px] leading-none text-[var(--text-primary)]">{value}</p>
-          <p className="mt-1 text-[10px] text-[var(--text-muted)]">{unit}</p>
+      {/* Row 2: value + unit + trend */}
+      <div className="mt-1.5 flex items-baseline justify-between">
+        <div className="flex items-baseline gap-1">
+          <span className="data text-2xl leading-none text-[var(--text-primary)]">{value}</span>
         </div>
-        <div className="text-right">
-          <p className={`data text-sm ${trend > 0 ? 'text-[var(--red)]' : trend < 0 ? 'text-[var(--green)]' : 'text-[var(--text-muted)]'}`}>
-            {trendGlyph} {Math.abs(trend).toFixed(2)}
-          </p>
-          <p className="text-[10px] text-[var(--text-muted)]">trend</p>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] text-[var(--text-muted)]">{unit}</span>
+          <span className="data text-sm" style={{ color: trendColor }}>{trendGlyph}</span>
         </div>
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#222228]">
-        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${clamp(confidence) * 100}%`, background: tone }} />
-      </div>
-      <div className="mt-2 flex items-center justify-between text-[10px] text-[var(--text-muted)]">
-        <span>confidence</span>
-        <span className="data">{Math.round(clamp(confidence) * 100)}%</span>
+      {/* Row 3: confidence bar */}
+      <div className="mt-2 flex items-center gap-2">
+        <div className="flex-1 h-1 rounded-full bg-[#181c24] overflow-hidden">
+          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${confPct}%`, background: tone }} />
+        </div>
+        <span className="data text-[10px] text-[var(--text-muted)]">{confPct}%</span>
       </div>
     </div>
   );
@@ -150,7 +151,7 @@ function ConfidenceGauge({ value }) {
   const currentPoint = polarToCartesian(120, 120, radius, startAngle + 270 * clamp(value));
 
   return (
-    <div className="rounded-[28px] border border-[#1F1F26] bg-[#0F0F12] p-4">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-3">
       <div className="flex items-center justify-between">
         <div>
           <p className="heading text-[11px] tracking-[0.28em] text-[var(--yellow)]">FUSED CONFIDENCE</p>
@@ -273,16 +274,16 @@ export default function ControlPanel() {
   const displayedStep = dumpCycle?.active ? dumpCycle.stage : (cycleSteps[phaseIndex] ?? 'LOAD');
 
   return (
-    <aside className="flex h-full w-full flex-col overflow-hidden border-r border-[#1F1F26] bg-[#0F0F12] text-[var(--text-primary)]">
-      <div className="sticky top-0 z-10 border-b border-[#1F1F26] bg-[#0F0F12]/95 px-2 sm:px-3 md:px-4 py-3 md:py-4 backdrop-blur-sm">
+    <aside className="flex h-full w-full flex-col overflow-hidden border-r border-[var(--border)] bg-[var(--bg-primary)] text-[var(--text-primary)]">
+      <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg-primary)]/95 px-3 py-3 backdrop-blur-sm">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="flex h-8 sm:h-10 w-8 sm:w-10 items-center justify-center rounded-sm bg-[var(--yellow)] text-[#0F0F12] shadow-[0_0_20px_rgba(245,168,0,0.25)]">
             <span className="heading text-xs sm:text-sm font-bold tracking-[0.15em]">SB</span>
           </div>
           <div className="min-w-0">
-            <p className="heading text-[10px] sm:text-[11px] tracking-[0.35em] text-[var(--yellow)]">SmartBed</p>
-            <p className="data text-[18px] sm:text-[26px] leading-none text-[var(--yellow)]">CAT 793-11</p>
-            <p className="mt-0.5 sm:mt-1 text-[8px] sm:text-[10px] tracking-[0.34em] text-[var(--text-muted)]">DIGITAL TWIN SIMULATION</p>
+            <p className="heading text-[11px] tracking-[0.35em] text-[var(--yellow)]">SmartBed</p>
+            <p className="data text-[22px] sm:text-[26px] leading-none text-[var(--yellow)]">CAT 793-11</p>
+            <p className="mt-0.5 sm:mt-1 text-[10px] sm:text-xs tracking-[0.34em] text-[var(--text-muted)]">DIGITAL TWIN SIMULATION</p>
           </div>
         </div>
 
@@ -291,21 +292,21 @@ export default function ControlPanel() {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--green)] opacity-30" />
             <span className="relative inline-flex h-full w-full rounded-full bg-[var(--green)] shadow-[0_0_12px_rgba(34,197,94,0.5)]" />
           </span>
-          <span className="heading tracking-[0.32em] text-[var(--green)]">LIVE</span>
-          <span className="ml-auto rounded-full border border-[#2A2A31] px-1.5 sm:px-2 py-0.5 sm:py-1 text-[8px] sm:text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">
+          <span className="heading tracking-[0.32em] text-[var(--green)] text-xs">LIVE</span>
+          <span className="ml-auto rounded-full border border-[#2A2A31] px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">
             {connected ? 'backend linked' : 'backend wait'}
           </span>
         </div>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-2 sm:px-3 md:px-4 py-3 md:py-4 pb-6 relative z-20">
+      <div className="flex-1 space-y-2.5 overflow-y-auto px-3 py-3 pb-6 relative z-20">
         <SectionCard title="Status" subtitle="Current dump cycle and material state">
-          <div className="rounded-2xl border border-[#1F1F26] bg-[#161619] p-4">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.25em] text-[var(--text-muted)]">Current State</p>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--text-muted)]">Current State</p>
                 <div
-                  className="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-black"
+                  className="mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.2em] text-black"
                   style={{ backgroundColor: currentStateTone.color }}
                 >
                   {currentStateLabel === 'DUMPING' ? (
@@ -322,18 +323,18 @@ export default function ControlPanel() {
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-[#23232b] border-l-4 border-l-[var(--yellow)] bg-[#0f0f12] p-3">
-                <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-muted)]">Bed Angle</p>
-                <div className="mt-2">
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-lg border border-[var(--border)] border-l-[3px] border-l-[var(--yellow)] bg-[var(--bg-card)] p-2.5">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-muted)]">Bed Angle</p>
+                <div className="mt-1.5">
                   <BedAngleGauge angle={state.bed_angle_deg ?? 0} optimal={optimalAngle} />
                 </div>
-                <p className="mt-2 text-[10px] text-[var(--text-muted)]">Delta {bedAngleDelta.toFixed(1)}°</p>
+                <p className="mt-1.5 text-[9px] text-[var(--text-muted)]">Delta {bedAngleDelta.toFixed(1)}°</p>
               </div>
-              <div className="rounded-xl border border-[#23232b] border-l-4 border-l-[var(--blue)] bg-[#0f0f12] p-3">
-                <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-muted)]">Material</p>
-                <p className="mt-2 text-sm font-medium text-[var(--text-primary)]">{materialOptions.find((item) => item.key === materialProfile)?.label ?? 'Mixed'}</p>
-                <p className="mt-1 text-[10px] text-[var(--text-muted)]">Moisture {moisture.toFixed(1)}%</p>
+              <div className="rounded-lg border border-[var(--border)] border-l-[3px] border-l-[var(--blue)] bg-[var(--bg-card)] p-2.5">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--text-muted)]">Material</p>
+                <p className="mt-1.5 text-sm font-medium text-[var(--text-primary)]">{materialOptions.find((item) => item.key === materialProfile)?.label ?? 'Mixed'}</p>
+                <p className="mt-1 text-[9px] text-[var(--text-muted)]">Moisture {moisture.toFixed(1)}%</p>
               </div>
             </div>
           </div>
@@ -348,11 +349,11 @@ export default function ControlPanel() {
                   key={option.key}
                   type="button"
                   onClick={() => setScenario(option.key)}
-                  className="rounded-full border px-3 py-2 text-left transition hover:brightness-110"
+                  className="rounded-lg border px-3 py-2 text-left transition hover:brightness-110"
                   style={{
-                    borderColor: selected ? option.accent : '#23232b',
-                    background: selected ? `${option.accent}14` : '#0f0f12',
-                    boxShadow: selected ? `0 0 12px ${option.accent}20` : 'none'
+                    borderColor: selected ? option.accent : 'var(--border)',
+                    background: selected ? `${option.accent}14` : 'var(--bg-card)',
+                    boxShadow: selected ? `0 0 10px ${option.accent}18` : 'none'
                   }}
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -377,56 +378,36 @@ export default function ControlPanel() {
         </SectionCard>
 
         <SectionCard title="Main Controls" subtitle="Cycle actions and elimination tools">
-          <div className="grid grid-cols-1 gap-2">
-            <button
-              type="button"
-              onClick={startDumpCycle}
-              className="rounded-2xl border border-[#F5A800] bg-[var(--yellow)] px-4 py-3 text-left text-sm font-semibold text-black shadow-[0_0_18px_rgba(245,168,0,0.22)] transition hover:shadow-[0_0_24px_rgba(245,168,0,0.35)] hover:brightness-110"
-            >
-              ▶ START DUMP CYCLE
-            </button>
-            <button
-              type="button"
-              onClick={pauseCycle}
-              className="rounded-2xl border border-[#2A2A31] bg-[#2A2A31] px-4 py-3 text-left text-sm font-semibold text-[var(--text-primary)] transition hover:border-[#3A3A41] hover:bg-[#3A3A41]"
-            >
-              {control.isPaused ? '▶ RESUME' : '⏸ PAUSE'}
-            </button>
-            <button
-              type="button"
-              onClick={stopAndResetCycle}
-              className="rounded-2xl border border-[#7f1d1d] bg-[#2a0f10] px-4 py-3 text-left text-sm font-semibold text-[#fca5a5] transition hover:border-[#a02020] hover:bg-[#3a1515]"
-            >
-              ⏹ STOP & RESET
-            </button>
-            <button
-              type="button"
-              onClick={triggerVibration}
-              className="rounded-2xl border border-[var(--amber)] bg-[rgba(245,158,11,0.12)] px-4 py-3 text-left text-sm font-semibold text-[var(--amber)] transition hover:bg-[rgba(245,158,11,0.24)] hover:shadow-[0_0_12px_rgba(245,158,11,0.2)]"
-            >
-              ⚡ TRIGGER VIBRATION
-            </button>
-            <button
-              type="button"
-              onClick={toggleShowZones}
-              className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
+          <div className="grid grid-cols-1 gap-1.5">
+            <button type="button" onClick={startDumpCycle}
+              className="rounded-lg border border-[var(--yellow)] bg-[var(--yellow)] px-3 py-2.5 text-left text-xs font-semibold text-black shadow-[0_0_14px_rgba(245,168,0,0.2)] transition hover:brightness-110"
+            >▶ START DUMP CYCLE</button>
+            <button type="button" onClick={pauseCycle}
+              className="rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2.5 text-left text-xs font-semibold text-[var(--text-primary)] transition hover:border-[#2a3548]"
+            >{control.isPaused ? '▶ RESUME' : '⏸ PAUSE'}</button>
+            <button type="button" onClick={stopAndResetCycle}
+              className="rounded-lg border border-[#7f1d1d] bg-[#1a0a0b] px-3 py-2.5 text-left text-xs font-semibold text-[#fca5a5] transition hover:border-[#a02020]"
+            >⏹ STOP & RESET</button>
+            <button type="button" onClick={triggerVibration}
+              className="rounded-lg border border-[var(--amber)] bg-[rgba(245,158,11,0.08)] px-3 py-2.5 text-left text-xs font-semibold text-[var(--amber)] transition hover:bg-[rgba(245,158,11,0.18)]"
+            >⚡ TRIGGER VIBRATION</button>
+            <button type="button" onClick={toggleShowZones}
+              className={`rounded-lg border px-3 py-2.5 text-left text-xs font-semibold transition ${
                 showZones
-                  ? 'border-[var(--blue)] bg-[rgba(59,130,246,0.14)] text-[var(--text-primary)] hover:bg-[rgba(59,130,246,0.24)]'
-                  : 'border-[#2A2A31] bg-[#0f0f12] text-[var(--text-muted)] hover:border-[var(--blue)] hover:bg-[rgba(59,130,246,0.08)]'
+                  ? 'border-[var(--blue)] bg-[rgba(59,130,246,0.1)] text-[var(--text-primary)]'
+                  : 'border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:border-[var(--blue)]'
               }`}
-            >
-              📊 {showZones ? 'HIDE ZONES' : 'SHOW ZONES'}
-            </button>
+            >📊 {showZones ? 'HIDE ZONES' : 'SHOW ZONES'}</button>
           </div>
         </SectionCard>
 
-        <SectionCard title="Material Override" subtitle="Profile that shapes adhesion and dump angle">
+        <SectionCard title="Material Override" subtitle="Adhesion and dump angle profile">
           <label className="block">
-            <span className="mb-2 block text-[10px] uppercase tracking-[0.24em] text-[var(--text-muted)]">Material Type</span>
+            <span className="mb-1.5 block text-[9px] uppercase tracking-[0.2em] text-[var(--text-muted)]">Material Type</span>
             <select
               value={materialProfile}
               onChange={(event) => setMaterialProfile(event.target.value)}
-              className="w-full rounded-2xl border border-[#2A2A31] bg-[#0f0f12] px-3 py-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--yellow)]"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2.5 text-xs text-[var(--text-primary)] outline-none transition focus:border-[var(--yellow)]"
             >
               {materialOptions.map((option) => (
                 <option key={option.key} value={option.key}>
@@ -435,13 +416,13 @@ export default function ControlPanel() {
               ))}
             </select>
           </label>
-          <p className="mt-3 text-xs text-[var(--text-muted)]">
-            Selecting changes acoustic baseline, particle stickiness, dump angle, and vibration duration.
+          <p className="mt-2 text-[10px] text-[var(--text-muted)]">
+            Changes acoustic baseline, particle stickiness, dump angle, and vibration.
           </p>
         </SectionCard>
 
         <SectionCard title="Sensor Readouts" subtitle="Live values and fusion trend">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-1.5">
             <SensorCard
               icon="⚖"
               label="LOAD CELL"
@@ -456,7 +437,7 @@ export default function ControlPanel() {
               icon="🎤"
               label="ACOUSTIC"
               value={`${Math.round(sensors.acoustic_db)} Hz`}
-              unit={`Δ ${Math.round((sensors.acoustic_db ?? 0) - 847)} Hz from baseline`}
+              unit={`Δ${Math.round((sensors.acoustic_db ?? 0) - 847)} Hz`}
               confidence={acousticConfidence}
               trend={trends.acoustic}
               detail="Dump acoustics"

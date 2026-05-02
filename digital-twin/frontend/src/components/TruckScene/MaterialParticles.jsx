@@ -15,8 +15,16 @@ const GRAVITY = 0.012;
 const CORRECTION_IMPULSE_INTERVAL = 0.04;
 const CORRECTION_IMPULSE_MAGNITUDE = 0.3;
 
+// Per-truck particle bed config
+const PARTICLE_BED = {
+  // 793F/797F were scaled up, so their residue anchors must sit lower and tighter inside the bed.
+  cat793f: { position: [0.05, 1.62, 0], bedLength: 3.2, bedHeight: 0.62, bedWidth: 3.25, wallInset: 0.2 },
+  cat797b: { position: [0.08, 1.72, 0], bedLength: 3.45, bedHeight: 0.68, bedWidth: 3.45, wallInset: 0.22 },
+  cat789c: { position: [-0.25, 0.78, 0], bedLength: 2.1, bedHeight: 0.36, bedWidth: 2.15, wallInset: 0.12 },
+};
+
 const MATERIAL_COLOR_MAP = {
-  mixed: ['#2a2420', '#2a2420', '#2a2420', '#8b4513', '#8b4513'],
+  mixed: ['#5b4633', '#6a4f37', '#7a5938', '#8b5e34', '#4c3a2b'],
   wet: ['#3d2b1a', '#3d2b1a', '#3d2b1a', '#2a2420', '#2a2420'],
   dry: ['#c4a35a', '#c4a35a', '#888888', '#888888'],
   sticky: ['#1a1208', '#1a1208', '#1a1208', '#8b4513']
@@ -40,21 +48,38 @@ const materialStickiness = {
 };
 
 function materialColor(materialProfile, index) {
-  const key = materialProfile === 'wet_clay' ? 'wet' : materialProfile === 'dry_rock' ? 'dry' : materialProfile === 'fine_ore' ? 'mixed' : 'sticky';
+  const key =
+    materialProfile === 'wet_clay'
+      ? 'wet'
+      : materialProfile === 'dry_rock'
+        ? 'dry'
+        : materialProfile === 'sticky_clay'
+          ? 'sticky'
+          : 'mixed';
   const palette = MATERIAL_COLOR_MAP[key] ?? MATERIAL_COLOR_MAP.mixed;
   return new Color(palette[index % palette.length]);
 }
 
-function makeParticle(index, stickyChance, materialProfile) {
+function makeParticle(index, stickyChance, materialProfile, bedL = BED_LENGTH, bedH = BED_HEIGHT, bedW = BED_WIDTH) {
   const sticky = Math.random() < stickyChance;
   const baseColor = materialColor(materialProfile, index);
   const color = sticky ? baseColor.clone().multiplyScalar(0.82) : baseColor;
 
+  // Spawn as a settled residue mound rather than a floating rectangular block.
+  const angle = Math.random() * Math.PI * 2;
+  const radial = Math.sqrt(Math.random());
+  const x = Math.cos(angle) * radial * bedL * 0.38 + (Math.random() - 0.5) * bedL * 0.08;
+  const z = Math.sin(angle) * radial * bedW * 0.38 + (Math.random() - 0.5) * bedW * 0.08;
+  const xNorm = x / Math.max(0.001, bedL * 0.5);
+  const zNorm = z / Math.max(0.001, bedW * 0.5);
+  const centerFalloff = Math.max(0, 1 - (xNorm * xNorm + zNorm * zNorm));
+  const y = 0.03 + Math.random() * 0.04 + centerFalloff * bedH * (0.18 + Math.random() * 0.22);
+
   return {
     position: [
-      (Math.random() - 0.5) * BED_LENGTH,
-      Math.random() * BED_HEIGHT + 0.2,
-      (Math.random() - 0.5) * BED_WIDTH
+      x,
+      y,
+      z
     ],
     velocity: [
       (Math.random() - 0.5) * 0.015,
@@ -78,8 +103,8 @@ function getCellIndex(value, min, size) {
   return Math.floor(normalized * GRID_SIZE);
 }
 
-function createParticleState(stickyChance, materialProfile) {
-  return Array.from({ length: PARTICLE_COUNT }, (_, index) => makeParticle(index, stickyChance, materialProfile));
+function createParticleState(stickyChance, materialProfile, bedL, bedH, bedW) {
+  return Array.from({ length: PARTICLE_COUNT }, (_, index) => makeParticle(index, stickyChance, materialProfile, bedL, bedH, bedW));
 }
 
 function createHeightGrid() {
@@ -108,6 +133,8 @@ export default function MaterialParticles() {
   const dumpCycle = useSimulationStore((s) => s.dumpCycle);
   const scenario = useSimulationStore((s) => s.scenario);
   const materialProfile = useSimulationStore((s) => s.materialProfile);
+  const selectedTruck = useSimulationStore((s) => s.selectedTruck ?? 'cat793f');
+  const bedCfg = PARTICLE_BED[selectedTruck] ?? PARTICLE_BED.cat793f;
 
   // temp object used to build instance matrices
   const tempObj = useRef(new Object3D());
@@ -124,7 +151,7 @@ export default function MaterialParticles() {
     materialProfile === 'wet_clay' ? 0.72 : materialProfile === 'dry_rock' ? 1.12 : 1.0;
 
   useEffect(() => {
-    particles.current = createParticleState(stickyChance, materialProfile);
+    particles.current = createParticleState(stickyChance, materialProfile, bedCfg.bedLength, bedCfg.bedHeight, bedCfg.bedWidth);
     heightGrid.current = createHeightGrid();
     correctionTimer.current = 0;
     const mesh = meshRef.current;
@@ -132,7 +159,7 @@ export default function MaterialParticles() {
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
-  }, [stickyChance, scenario, materialProfile]);
+  }, [stickyChance, scenario, materialProfile, selectedTruck]);
 
   const isDumping = phase === 'DUMPING' || phase === 'DETECTING';
   const isHeld = phase === 'DETECTING' || phase === 'VERIFYING';
@@ -153,8 +180,8 @@ export default function MaterialParticles() {
       const pz = particle.position[2];
 
       if (particle.fallen) {
-        const cellX = getCellIndex(px, -BED_LENGTH / 2, BED_LENGTH / GRID_SIZE);
-        const cellZ = getCellIndex(pz, -BED_WIDTH / 2, BED_WIDTH / GRID_SIZE);
+        const cellX = getCellIndex(px, -bedCfg.bedLength / 2, bedCfg.bedLength / GRID_SIZE);
+        const cellZ = getCellIndex(pz, -bedCfg.bedWidth / 2, bedCfg.bedWidth / GRID_SIZE);
         const stackedHeight = heightGrid.current[cellX][cellZ];
         particle.position[1] = GROUND_LEVEL + stackedHeight + particle.size * 0.5;
         particle.velocity[1] = 0;
@@ -202,7 +229,20 @@ export default function MaterialParticles() {
       particle.position[1] += particle.velocity[1] * delta * 60;
       particle.position[2] += particle.velocity[2] * delta * 60;
 
-      const tailgateCrossed = particle.position[2] > BED_WIDTH * 0.42 || particle.position[0] > BED_LENGTH * 0.45;
+      // Clamp particles inside the bed while still attached
+      const halfL = bedCfg.bedLength / 2;
+      const halfW = bedCfg.bedWidth / 2;
+      const wallInset = bedCfg.wallInset ?? 0.1;
+      const innerHalfL = Math.max(0.2, halfL - wallInset);
+      const innerHalfW = Math.max(0.2, halfW - wallInset);
+      if (particle.attached) {
+        particle.position[0] = MathUtils.clamp(particle.position[0], -innerHalfL, innerHalfL);
+        particle.position[2] = MathUtils.clamp(particle.position[2], -innerHalfW, innerHalfW);
+        if (particle.position[1] < 0.02) particle.position[1] = 0.02;
+        if (particle.position[1] > bedCfg.bedHeight) particle.position[1] = bedCfg.bedHeight;
+      }
+
+      const tailgateCrossed = particle.position[2] > halfW * 0.85 || particle.position[0] > halfL * 0.9;
       const tailgateVisible = dumpCycle?.tailgateOpen || isDumping || isLowering || isCorrection;
       if (tailgateVisible && tailgateCrossed) {
         particle.fallen = true;
@@ -221,8 +261,8 @@ export default function MaterialParticles() {
         particle.velocity[2] *= 0.8;
 
         if (!particle.settled) {
-          const cellX = getCellIndex(particle.position[0], -BED_LENGTH / 2, BED_LENGTH / GRID_SIZE);
-          const cellZ = getCellIndex(particle.position[2], -BED_WIDTH / 2, BED_WIDTH / GRID_SIZE);
+          const cellX = getCellIndex(particle.position[0], -bedCfg.bedLength / 2, bedCfg.bedLength / GRID_SIZE);
+          const cellZ = getCellIndex(particle.position[2], -bedCfg.bedWidth / 2, bedCfg.bedWidth / GRID_SIZE);
           const pileHeight = heightGrid.current[cellX][cellZ];
           particle.pileHeight = pileHeight;
           heightGrid.current[cellX][cellZ] = pileHeight + particle.size * 0.42;
@@ -283,7 +323,7 @@ export default function MaterialParticles() {
   });
 
   return (
-    <group position={[1.65, 2.55, 0]} visible>
+    <group position={bedCfg.position} visible>
       <instancedMesh ref={meshRef} args={[null, null, PARTICLE_COUNT]} castShadow receiveShadow>
         <dodecahedronGeometry args={[1, 0]} />
         <primitive attach="material" object={sharedMaterial} />

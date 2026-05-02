@@ -10,7 +10,7 @@ export default function DemoControl() {
       {/* Floating Demo Button */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-8 left-1/2 z-40 -translate-x-1/2"
+        className="fixed bottom-6 right-6 z-40"
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.95 }}
       >

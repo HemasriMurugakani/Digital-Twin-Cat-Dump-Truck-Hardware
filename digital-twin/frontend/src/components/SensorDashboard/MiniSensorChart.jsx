@@ -5,17 +5,16 @@ export default function MiniSensorChart({ data = [], dataKey, stroke = '#F5A800'
   const [shifted, setShifted] = useState(false);
 
   useEffect(() => {
-    // trigger slide-in whenever data length increases
     setShifted(true);
     const t = setTimeout(() => setShifted(false), 40);
     return () => clearTimeout(t);
   }, [data.length]);
 
   return (
-    <div className="h-16 w-full overflow-hidden rounded-md bg-transparent">
-      <div style={{ transform: shifted ? 'translateX(8px)' : 'translateX(0)', transition: 'transform 420ms cubic-bezier(.22,.9,.36,1)' }}>
+    <div className="h-full w-full overflow-hidden rounded bg-transparent">
+      <div style={{ transform: shifted ? 'translateX(6px)' : 'translateX(0)', transition: 'transform 380ms cubic-bezier(.22,.9,.36,1)', width: '100%', height: '100%' }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+          <LineChart data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
             <XAxis hide dataKey="idx" />
             <YAxis hide domain={["dataMin", "dataMax"]} />
             {threshold != null && <ReferenceLine y={threshold} stroke="#F5A800" strokeDasharray="3 4" />}
@@ -24,9 +23,9 @@ export default function MiniSensorChart({ data = [], dataKey, stroke = '#F5A800'
               dataKey={dataKey}
               stroke={stroke}
               dot={false}
-              strokeWidth={2}
+              strokeWidth={1.5}
               isAnimationActive={true}
-              animationDuration={420}
+              animationDuration={380}
               animationEasing="ease-out"
             />
           </LineChart>

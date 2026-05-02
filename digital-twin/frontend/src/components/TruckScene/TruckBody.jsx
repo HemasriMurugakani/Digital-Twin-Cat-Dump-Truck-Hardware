@@ -13,22 +13,43 @@ useGLTF.preload('/models/caterpillar_789c.glb');
 const TRUCK_CONFIGS = {
   cat793f: {
     glb: '/models/caterpillar_797f_mining_truck.glb',
-    scale: [0.035, 0.035, 0.035],
-    position: [0, 0, 0],
+    scale: [0.135, 0.135, 0.135],
+    position: [0, 0.14, 0],
     rotation: [0, Math.PI, 0],
   },
   cat797b: {
     glb: '/models/caterpillar_797f_mining_truck.glb',
-    scale: [0.035, 0.035, 0.035],
-    position: [0, 0, 0],
+    scale: [0.145, 0.145, 0.145],
+    position: [0, 0.16, 0],
     rotation: [0, Math.PI, 0],
   },
   cat789c: {
     glb: '/models/caterpillar_789c.glb',
-    scale: [3.5, 3.5, 3.5],
-    position: [0, 0, 0],
+    scale: [2.2, 2.2, 2.2],
+    position: [0, 0.1, 0],
     rotation: [0, Math.PI, 0],
   },
+};
+
+const TRUCK_APPEARANCE = {
+  cat793f: {
+    roughnessBoost: 0.18,
+    metalnessShift: -0.12,
+    envMapIntensity: 0.22,
+    tint: 0.88
+  },
+  cat797b: {
+    roughnessBoost: 0.16,
+    metalnessShift: -0.1,
+    envMapIntensity: 0.24,
+    tint: 0.9
+  },
+  cat789c: {
+    roughnessBoost: 0.12,
+    metalnessShift: -0.06,
+    envMapIntensity: 0.3,
+    tint: 0.94
+  }
 };
 
 // ─── Loading spinner ─────────────────────────────────────────────────────────
@@ -52,7 +73,7 @@ function TruckLoadingSpinner() {
 }
 
 // ─── GLB model renderer ──────────────────────────────────────────────────────
-function TruckModel({ config }) {
+function TruckModel({ config, appearance }) {
   const { scene } = useGLTF(config.glb);
 
   const clonedScene = useMemo(() => {
@@ -65,6 +86,13 @@ function TruckModel({ config }) {
         if (node.material) {
           node.material = node.material.clone();
           node.material.needsUpdate = true;
+          node.material.roughness = Math.min(0.98, (node.material.roughness ?? 0.7) + appearance.roughnessBoost);
+          node.material.metalness = Math.max(0.03, (node.material.metalness ?? 0.2) + appearance.metalnessShift);
+          node.material.envMapIntensity = appearance.envMapIntensity;
+          node.material.toneMapped = true;
+          if (node.material.color) {
+            node.material.color.multiplyScalar(appearance.tint);
+          }
           // Fix colorSpace for Three.js r152+ (0.160)
           if (node.material.map) {
             node.material.map.colorSpace = THREE.SRGBColorSpace;
@@ -90,10 +118,11 @@ function TruckModel({ config }) {
 export default function TruckBody() {
   const selectedTruck = useSimulationStore((s) => s.selectedTruck ?? 'cat793f');
   const config = TRUCK_CONFIGS[selectedTruck] ?? TRUCK_CONFIGS.cat793f;
+  const appearance = TRUCK_APPEARANCE[selectedTruck] ?? TRUCK_APPEARANCE.cat793f;
 
   return (
     <Suspense fallback={<TruckLoadingSpinner />}>
-      <TruckModel key={selectedTruck} config={config} />
+      <TruckModel key={selectedTruck} config={config} appearance={appearance} />
     </Suspense>
   );
 }

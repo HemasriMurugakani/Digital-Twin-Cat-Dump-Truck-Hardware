@@ -12,19 +12,36 @@ const loadLowColor = new Color('#22C55E');
 const loadMidColor = new Color('#F5A800');
 const loadHighColor = new Color('#EF4444');
 
-const ultrasonicPositions = [
-  [2, 5.2, 4.9],
-  [-3, 5.2, 4.9],
-  [2, 5.2, -4.9],
-  [-3, 5.2, -4.9]
-];
-
-const loadCellPositions = [
-  [4.5, 1.5, 4.5],
-  [4.5, 1.5, -4.5],
-  [-4.5, 1.5, 4.5],
-  [-4.5, 1.5, -4.5]
-];
+// Per-truck sensor position configs
+const SENSOR_POSITIONS = {
+  cat793f: {
+    camera: [2.7, 4.15, 0],
+    cameraStatus: [2.7, 4.9, 0],
+    acoustic: [-1.55, 3.45, 1.95],
+    ultrasonic: [[1.4, 3.25, 0]],
+    loadCells: [[1.9, 0.72, 1.85], [1.9, 0.72, -1.85], [-1.9, 0.72, 1.85], [-1.9, 0.72, -1.85]],
+    loadLabel: [-1.9, 0.22, 0],
+    scanLines: [1.25, 0.18, 0],
+  },
+  cat797b: {
+    camera: [2.9, 4.35, 0],
+    cameraStatus: [2.9, 5.1, 0],
+    acoustic: [-1.7, 3.7, 2.05],
+    ultrasonic: [[1.55, 3.45, 0]],
+    loadCells: [[2.1, 0.8, 2.0], [2.1, 0.8, -2.0], [-2.1, 0.8, 2.0], [-2.1, 0.8, -2.0]],
+    loadLabel: [-2.05, 0.25, 0],
+    scanLines: [1.35, 0.2, 0],
+  },
+  cat789c: {
+    camera: [1.8, 3.8, 0],
+    cameraStatus: [1.8, 4.5, 0],
+    acoustic: [-1.5, 3.2, 1.8],
+    ultrasonic: [[0.5, 3.2, 0]],
+    loadCells: [[1.5, 0.6, 1.5], [1.5, 0.6, -1.5], [-2.0, 0.6, 1.5], [-2.0, 0.6, -1.5]],
+    loadLabel: [-2.0, 0.2, 0],
+    scanLines: [0.5, 0.15, 0],
+  },
+};
 
 function loadColorForValue(value) {
   if (value > 0.72) return loadHighColor.clone();
@@ -61,7 +78,7 @@ const SENSOR_MARKER_CSS = `
 .load-bar > span { display: block; height: 100%; border-radius: inherit; background: #F5A800; box-shadow: 0 0 8px rgba(245, 168, 0, 0.45); }
 `;
 
-function CameraSensor({ visionScore, cameraDetected, isScanning }) {
+function CameraSensor({ visionScore, cameraDetected, isScanning, position = [7, 7.5, 0] }) {
   const ringRef = useRef(null);
   const coneRef = useRef(null);
 
@@ -84,7 +101,7 @@ function CameraSensor({ visionScore, cameraDetected, isScanning }) {
   });
 
   return (
-    <group position={[7, 7.5, 0]}>
+    <group position={position}>
       <mesh castShadow receiveShadow>
         <boxGeometry args={[0.4, 0.3, 0.5]} />
         <meshStandardMaterial color="#111111" roughness={0.9} metalness={0.1} />
@@ -109,7 +126,7 @@ function CameraSensor({ visionScore, cameraDetected, isScanning }) {
         <coneGeometry args={[2.5, 4, 32, 1, true]} />
         <meshBasicMaterial color="#00FF88" transparent opacity={0.06} side={2} depthWrite={false} />
       </mesh>
-      <Html occlude distanceFactor={10} position={[0, 0.65, 0]} center>
+      <Html distanceFactor={8} position={[0, 0.5, 0]} center>
         <div className="sensor-label">
           <span className="sensor-name">📷 IP67 CAMERA</span>
           <span className="sensor-value">{visionScore.toFixed(2)}</span>
@@ -152,7 +169,7 @@ function CameraScanLines({ active }) {
   );
 }
 
-function AcousticSensor({ acousticDeviation, materialType, isDumping, isScanning }) {
+function AcousticSensor({ acousticDeviation, materialType, isDumping, isScanning, position = [-2, 5.5, 4.8] }) {
   const waveRefs = [useRef(null), useRef(null), useRef(null)];
 
   useFrame(({ clock }) => {
@@ -169,7 +186,7 @@ function AcousticSensor({ acousticDeviation, materialType, isDumping, isScanning
   });
 
   return (
-    <group position={[-2, 5.5, 4.8]} rotation={[0, Math.PI / 2, 0]}>
+    <group position={position} rotation={[0, Math.PI / 2, 0]}>
       <mesh castShadow receiveShadow>
         <cylinderGeometry args={[0.25, 0.25, 0.15, 32]} />
         <meshStandardMaterial color="#3A3A3A" roughness={0.45} metalness={0.75} />
@@ -192,7 +209,7 @@ function AcousticSensor({ acousticDeviation, materialType, isDumping, isScanning
           <meshBasicMaterial color={soundWaveColor} transparent opacity={0.45} depthWrite={false} />
         </mesh>
       ))}
-      <Html occlude distanceFactor={10} position={[0, 0.5, 0]} center>
+      <Html distanceFactor={8} position={[0, 0.4, 0]} center>
         <div className="sensor-label">
           <span className="sensor-name">🎤 ACOUSTIC</span>
           <span className="sensor-value">{acousticDeviation}Hz</span>
@@ -228,7 +245,7 @@ function UltrasonicSensor({ position, distanceCm, isScanning, index }) {
   });
 
   return (
-    <group position={position} rotation={[0, position[2] > 0 ? -Math.PI / 2 : Math.PI / 2, 0]}>
+    <group position={position} rotation={[0, -Math.PI / 2, 0]}>
       <mesh castShadow receiveShadow>
         <cylinderGeometry args={[0.2, 0.2, 0.1, 16]} />
         <meshStandardMaterial color="#CCCCCC" roughness={0.3} metalness={0.85} />
@@ -252,9 +269,9 @@ function UltrasonicSensor({ position, distanceCm, isScanning, index }) {
         </bufferGeometry>
         <lineDashedMaterial color={ultrasonicColor} dashSize={0.12} gapSize={0.08} />
       </line>
-      <Html occlude distanceFactor={10} position={[0.1, 0.35, -0.5]} center>
+      <Html distanceFactor={8} position={[0, 0.3, 0]} center>
         <div className="sensor-label" style={{ minWidth: 84 }}>
-          <span className="sensor-name">ULTRASONIC {index + 1}</span>
+          <span className="sensor-name">ULTRASONIC</span>
           <span className="sensor-value">{distanceCm.toFixed(0)}cm</span>
         </div>
       </Html>
@@ -312,6 +329,8 @@ export default function SensorMarkers({ degradedMode = false }) {
   const hydraulicExtension = useSimulationStore((s) => s.hydraulicExtension ?? 0);
   const scenario = useSimulationStore((s) => s.scenario);
   const materialProfile = useSimulationStore((s) => s.materialProfile);
+  const selectedTruck = useSimulationStore((s) => s.selectedTruck ?? 'cat793f');
+  const sp = SENSOR_POSITIONS[selectedTruck] ?? SENSOR_POSITIONS.cat793f;
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -365,7 +384,7 @@ export default function SensorMarkers({ degradedMode = false }) {
     <group>
             {!degradedMode && (
               <>
-      <CameraSensor visionScore={visionScore} cameraDetected={cameraDetected} isScanning={isScanning} />
+      <CameraSensor visionScore={visionScore} cameraDetected={cameraDetected} isScanning={isScanning} position={sp.camera} />
       <CameraScanLines active={isScanning} />
               </>
             )}
@@ -374,14 +393,15 @@ export default function SensorMarkers({ degradedMode = false }) {
         materialType={materialType}
         isDumping={isDumping}
         isScanning={isScanning}
+        position={sp.acoustic}
       />
 
-      {ultrasonicPositions.map((position, index) => {
+      {sp.ultrasonic.map((position, index) => {
         const distanceCm = getCellDistance(bedAngle, ultrasonicValue, index * 3.5);
         return <UltrasonicSensor key={`ultrasonic-${index}`} position={position} distanceCm={distanceCm} isScanning={isScanning} index={index} />;
       })}
 
-      {loadCellPositions.map((position, index) => (
+      {sp.loadCells.map((position, index) => (
         <LoadCell
           key={`load-cell-${index}`}
           position={position}
@@ -390,7 +410,7 @@ export default function SensorMarkers({ degradedMode = false }) {
         />
       ))}
 
-      <Html occlude distanceFactor={12} position={[-4.5, 0.5, 0]} center>
+      <Html distanceFactor={8} position={sp.loadLabel} center>
         <div className="sensor-label load-label">
           <span className="sensor-name">⚖ LOAD CELLS</span>
           <span className="sensor-value">{loadTonnes.toFixed(1)}t detected</span>
@@ -404,7 +424,7 @@ export default function SensorMarkers({ degradedMode = false }) {
         </div>
       </Html>
 
-      <Html occlude distanceFactor={10} position={[7, 8.25, 0]} center>
+      <Html occlude distanceFactor={8} position={sp.cameraStatus} center>
         <div className="sensor-label">
           <span className="sensor-name">CAMERA STATUS</span>
           <span className="sensor-value">{cameraDetected ? 'RESIDUE DETECTED' : 'CLEAR'}</span>

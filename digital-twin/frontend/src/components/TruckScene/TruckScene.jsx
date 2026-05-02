@@ -7,25 +7,46 @@ import EnvironmentSetup from './EnvironmentSetup';
 import TruckBody from './TruckBody';
 import MaterialParticles from './MaterialParticles';
 import SensorMarkers from './SensorMarkers';
-import TruckLabels from './TruckLabels';
-
-const cameraPresets = {
-  ISO: { position: [12, 6, 18], target: [0, 3.5, 0] },
-  SIDE: { position: [21, 5.5, 0.5], target: [0, 3.8, 0] },
-  TOP: { position: [0.1, 20, 0.1], target: [0, 0.8, 0] },
-  REAR: { position: [-18, 5.2, -1], target: [0, 3.4, 0] }
+const CAMERA_PRESETS_BY_TRUCK = {
+  cat793f: {
+    ISO: { position: [5.8, 3.3, 8.8], target: [0, 1.8, 0] },
+    SIDE: { position: [9.6, 3.0, 0.25], target: [0, 2.0, 0] },
+    FRONT: { position: [0, 3.3, -10.6], target: [0, 1.9, 0] },
+    TOP: { position: [0.1, 10.6, 0.1], target: [0, 0.4, 0] },
+    REAR: { position: [0, 3.3, 10.6], target: [0, 1.9, 0] }
+  },
+  cat797b: {
+    ISO: { position: [6.4, 3.6, 9.7], target: [0, 2.0, 0] },
+    SIDE: { position: [10.5, 3.2, 0.3], target: [0, 2.15, 0] },
+    FRONT: { position: [0, 3.5, -11.7], target: [0, 2.0, 0] },
+    TOP: { position: [0.1, 11.5, 0.1], target: [0, 0.4, 0] },
+    REAR: { position: [0, 3.5, 11.7], target: [0, 2.0, 0] }
+  },
+  cat789c: {
+    ISO: { position: [7.5, 4, 11], target: [0, 2.2, 0] },
+    SIDE: { position: [13, 3.5, 0.3], target: [0, 2.5, 0] },
+    FRONT: { position: [0, 3.8, -13], target: [0, 2.2, 0] },
+    TOP: { position: [0.1, 13, 0.1], target: [0, 0.5, 0] },
+    REAR: { position: [0, 3.8, 13], target: [0, 2.2, 0] }
+  }
 };
 
-function CameraPresetAnimator({ preset, controlsRef }) {
+const TRUCK_SCENE_OFFSETS = {
+  cat793f: [0, 0, 0],
+  cat797b: [0, 0, 0],
+  cat789c: [0, 0.5, 0]
+};
+
+function CameraPresetAnimator({ preset, controlsRef, presets }) {
   const { camera } = useThree();
-  const targetRef = useRef(new THREE.Vector3(...cameraPresets.ISO.target));
-  const positionRef = useRef(new THREE.Vector3(...cameraPresets.ISO.position));
+  const targetRef = useRef(new THREE.Vector3(...presets.ISO.target));
+  const positionRef = useRef(new THREE.Vector3(...presets.ISO.position));
 
   useEffect(() => {
-    const nextPreset = cameraPresets[preset] ?? cameraPresets.ISO;
+    const nextPreset = presets[preset] ?? presets.ISO;
     targetRef.current.set(...nextPreset.target);
     positionRef.current.set(...nextPreset.position);
-  }, [preset]);
+  }, [preset, presets]);
 
   useFrame((_, delta) => {
     const easing = 1 - Math.exp(-delta * 3.5);
@@ -111,19 +132,20 @@ function WarningLightRig({ active }) {
   );
 }
 
-function CameraPresetPanel({ preset, onPresetChange }) {
+function CameraPresetPanel({ preset, onPresetChange, autoRotate360, onToggle360 }) {
   const buttons = useMemo(
     () => [
-      ['ISO', 'ISO VIEW'],
-      ['SIDE', 'SIDE VIEW'],
-      ['TOP', 'TOP VIEW'],
-      ['REAR', 'REAR VIEW']
+      ['ISO', 'ISO'],
+      ['SIDE', 'SIDE'],
+      ['FRONT', 'FRONT'],
+      ['TOP', 'TOP'],
+      ['REAR', 'REAR']
     ],
     []
   );
 
   return (
-    <div className="pointer-events-auto absolute right-4 top-4 z-20 flex flex-wrap justify-end gap-2">
+    <div className="pointer-events-auto absolute right-3 top-3 z-20 flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[rgba(10,14,22,0.88)] p-1 backdrop-blur-md">
       {buttons.map(([key, label]) => {
         const active = preset === key;
         return (
@@ -131,16 +153,28 @@ function CameraPresetPanel({ preset, onPresetChange }) {
             key={key}
             type="button"
             onClick={() => onPresetChange(key)}
-            className={`rounded-full border px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] transition ${
+            className={`rounded-md px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] transition-all duration-200 ${
               active
-                ? 'border-[#2a3a50] bg-[#111a28] text-[var(--yellow)] border-b-2 border-b-[var(--yellow)]'
-                : 'border-[#2A2A31] bg-[#101722] text-[var(--text-muted)] hover:border-[var(--yellow)] hover:text-[var(--text-primary)]'
+                ? 'bg-[var(--yellow)] text-black shadow-[0_0_10px_rgba(245,168,0,0.3)]'
+                : 'text-[var(--text-muted)] hover:bg-[#1a2030] hover:text-[var(--text-primary)]'
             }`}
           >
             {label}
           </button>
         );
       })}
+      <div className="w-px h-5 bg-[var(--border)] mx-0.5" />
+      <button
+        type="button"
+        onClick={onToggle360}
+        className={`rounded-md px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] transition-all duration-200 ${
+          autoRotate360
+            ? 'bg-[var(--yellow)] text-black shadow-[0_0_10px_rgba(245,168,0,0.3)]'
+            : 'text-[var(--text-muted)] hover:bg-[#1a2030] hover:text-[var(--text-primary)]'
+        }`}
+      >
+        {autoRotate360 ? '⟳ 360 DEGREE' : '360 DEGREE'}
+      </button>
     </div>
   );
 }
@@ -170,11 +204,11 @@ function PerformanceBadge() {
   }, []);
 
   return (
-    <div className="pointer-events-none absolute bottom-8 left-4 z-20 rounded-full border border-[#2a3a50] bg-[rgba(5,9,15,0.92)] px-4 py-2 text-[11px] text-[#cbd5e1] shadow-[0_12px_30px_rgba(0,0,0,0.42)] backdrop-blur-sm">
+    <div className="pointer-events-none absolute bottom-6 left-3 z-20 rounded-lg border border-[var(--border)] bg-[rgba(10,14,22,0.88)] px-3 py-1.5 text-[11px] backdrop-blur-md">
       <span className="data text-[var(--text-primary)]">FPS: {fps}</span>
-      <span className="mx-2 text-[#2F2F37]">|</span>
+      <span className="mx-1.5 text-[var(--border)]">|</span>
       <span className="data text-[var(--text-primary)]">Particles: {showParticles ? 800 : 0}</span>
-      <span className="mx-2 text-[#2F2F37]">|</span>
+      <span className="mx-1.5 text-[var(--border)]">|</span>
       <span className="data text-[var(--text-primary)]">Latency: {latencyMs.toFixed(0)}ms</span>
     </div>
   );
@@ -201,6 +235,7 @@ export default function TruckScene() {
   const selectedTruck = useSimulationStore((s) => s.selectedTruck);
   const truckSwitchToken = useSimulationStore((s) => s.truckSwitchToken);
   const [preset, setPreset] = useState('ISO');
+  const [autoRotate360, setAutoRotate360] = useState(false);
   const [cameraYaw, setCameraYaw] = useState(0);
   const [loadingLabel, setLoadingLabel] = useState('');
   const controlsRef = useRef(null);
@@ -223,30 +258,51 @@ export default function TruckScene() {
     return () => window.clearTimeout(timeout);
   }, [selectedTruck, truckSwitchToken]);
 
+  const truckName = selectedTruck === 'cat797b' ? 'CAT 797B' : selectedTruck === 'cat789c' ? 'CAT 789C' : 'CAT 793F';
+  const truckSceneOffset = TRUCK_SCENE_OFFSETS[selectedTruck] ?? TRUCK_SCENE_OFFSETS.cat793f;
+  const cameraPresets = CAMERA_PRESETS_BY_TRUCK[selectedTruck] ?? CAMERA_PRESETS_BY_TRUCK.cat793f;
+
   return (
     <div className="relative h-full w-full overflow-hidden">
-      <CameraPresetPanel preset={preset} onPresetChange={setPreset} />
+      <CameraPresetPanel preset={preset} onPresetChange={(p) => { setPreset(p); setAutoRotate360(false); }} autoRotate360={autoRotate360} onToggle360={() => setAutoRotate360(v => !v)} />
+
+      {/* Sensor HUD overlay — top-left of viewport */}
+      <div className="pointer-events-none absolute left-3 top-3 z-20 rounded-lg border border-[var(--border)] bg-[rgba(10,14,22,0.88)] px-3 py-2 backdrop-blur-md">
+        <div className="flex items-center gap-2 text-[11px]">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--green)] opacity-30" />
+            <span className="relative inline-flex h-full w-full rounded-full bg-[var(--green)]" />
+          </span>
+          <span className="heading tracking-[0.18em] text-[var(--text-primary)]">{truckName}</span>
+          <span className="text-[var(--text-muted)]">•</span>
+          <span className="data text-[var(--text-muted)]">4 sensors</span>
+        </div>
+      </div>
+
       {degradedMode && (
-        <div className="pointer-events-none absolute right-4 top-20 z-20 rounded-lg border border-[#EF4444] bg-[rgba(239,68,68,0.1)] px-4 py-2 text-xs font-semibold text-[#EF4444] shadow-[0_0_18px_rgba(239,68,68,0.2)]">
+        <div className="pointer-events-none absolute right-4 top-16 z-20 rounded-lg border border-[#EF4444] bg-[rgba(239,68,68,0.1)] px-3 py-1.5 text-[10px] font-semibold text-[#EF4444] shadow-[0_0_14px_rgba(239,68,68,0.2)]">
           ⚠ CAMERA: OFFLINE
         </div>
       )}
       {loadingLabel ? (
-        <div className="pointer-events-none absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[#f59e0b] bg-[rgba(15,20,32,0.95)] px-6 py-3 text-sm font-semibold text-[#f59e0b] shadow-[0_0_24px_rgba(245,158,11,0.35)]">
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[var(--yellow)] bg-[rgba(13,15,20,0.95)] px-5 py-2.5 text-sm font-semibold text-[var(--yellow)] shadow-[0_0_20px_rgba(245,168,0,0.3)]">
           {loadingLabel}
         </div>
       ) : null}
       <PerformanceBadge />
-      <div className="pointer-events-none absolute bottom-8 right-4 z-20 rounded-full border border-[#2a3a50] bg-[rgba(5,9,15,0.9)] px-3 py-2 text-[10px] text-[#9ca3af]">
-        <div className="relative h-10 w-10">
-          <div className="absolute inset-0 rounded-full border border-[#334155]" />
-          <div className="absolute left-1/2 top-1/2 h-4 w-[2px] -translate-x-1/2 -translate-y-full bg-[#f59e0b]" style={{ transform: `translate(-50%, -100%) rotate(${(-cameraYaw * 180) / Math.PI}deg)` }} />
-          <span className="absolute left-1/2 top-[2px] -translate-x-1/2 text-[9px]">N</span>
-          <span className="absolute bottom-[2px] left-1/2 -translate-x-1/2 text-[9px]">S</span>
-          <span className="absolute right-[2px] top-1/2 -translate-y-1/2 text-[9px]">E</span>
-          <span className="absolute left-[2px] top-1/2 -translate-y-1/2 text-[9px]">W</span>
+
+      {/* Compass */}
+      <div className="pointer-events-none absolute bottom-6 right-3 z-20 rounded-full border border-[var(--border)] bg-[rgba(10,14,22,0.88)] p-2.5 backdrop-blur-md">
+        <div className="relative h-9 w-9">
+          <div className="absolute inset-0 rounded-full border border-[#2a3548]" />
+          <div className="absolute left-1/2 top-1/2 h-3.5 w-[2px] -translate-x-1/2 -translate-y-full bg-[var(--yellow)]" style={{ transform: `translate(-50%, -100%) rotate(${(-cameraYaw * 180) / Math.PI}deg)` }} />
+          <span className="absolute left-1/2 top-[1px] -translate-x-1/2 text-[8px] text-[var(--text-muted)]">N</span>
+          <span className="absolute bottom-[1px] left-1/2 -translate-x-1/2 text-[8px] text-[var(--text-muted)]">S</span>
+          <span className="absolute right-[1px] top-1/2 -translate-y-1/2 text-[8px] text-[var(--text-muted)]">E</span>
+          <span className="absolute left-[1px] top-1/2 -translate-y-1/2 text-[8px] text-[var(--text-muted)]">W</span>
         </div>
       </div>
+
       <Canvas
         shadows
         camera={{ position: cameraPresets.ISO.position, fov: 45 }}
@@ -257,26 +313,27 @@ export default function TruckScene() {
         <EnvironmentSetup />
         <WarningSpotlight enabled={alert || dumpCycle?.warningLights} />
         <WarningLightRig active={Boolean(alert || dumpCycle?.warningLights)} />
-        <CameraPresetAnimator preset={preset} controlsRef={controlsRef} />
+        <CameraPresetAnimator preset={preset} controlsRef={controlsRef} presets={cameraPresets} />
         <CameraYawTracker onYaw={setCameraYaw} />
 
-        <group position={[0, 0, 0]}>
+        <group position={truckSceneOffset}>
+          <pointLight position={[0, 0.9, 0]} intensity={0.36} color="#ffd9a6" distance={13} />
           <TruckBody />
           <MaterialParticles />
           <SensorMarkers degradedMode={degradedMode} />
-          <TruckLabels />
         </group>
 
         <OrbitControls
           ref={controlsRef}
-          enablePan={false}
+          enablePan={autoRotate360}
           enableDamping
           dampingFactor={0.08}
-          minDistance={8}
-          maxDistance={35}
-          maxPolarAngle={Math.PI / 2}
-          autoRotate={phase === 'IDLE'}
-          autoRotateSpeed={0.3}
+          minDistance={5}
+          maxDistance={28}
+          minPolarAngle={autoRotate360 ? 0.05 : 0.2}
+          maxPolarAngle={autoRotate360 ? Math.PI - 0.05 : Math.PI / 2}
+          autoRotate={autoRotate360 || phase === 'IDLE'}
+          autoRotateSpeed={autoRotate360 ? 1.5 : 0.3}
         />
       </Canvas>
     </div>

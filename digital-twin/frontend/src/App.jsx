@@ -9,9 +9,9 @@ import { startSimulationPolling } from './hooks/useSimulation';
 import { useDumpCycleSequence } from './hooks/useDumpCycleSequence';
 import { useSimulationStore } from './store/simulationStore';
 import TruckSelector from './components/TruckSelector';
-
 import DemoControl from './components/DemoControl';
 
+/* ─── Top Header Bar ──────────────────────────────────────────────────────── */
 function TopBar() {
   const connected = useSimulationStore((s) => s.connected);
   const latencyMs = useSimulationStore((s) => s.latencyMs);
@@ -38,108 +38,112 @@ function TopBar() {
       initial={{ y: -18, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.45 }}
-      className="grid h-[64px] grid-cols-[1fr_auto_auto] items-center gap-2 rounded-[22px] border border-[var(--border)] bg-[rgba(10,14,24,0.92)] px-3 sm:gap-3 sm:px-4 shadow-[0_18px_50px_rgba(0,0,0,0.34)] backdrop-blur-md"
+      className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border)] bg-[rgba(10,14,22,0.92)] px-3 py-2 shadow-[0_12px_40px_rgba(0,0,0,0.3)] backdrop-blur-md sm:gap-3 sm:px-4"
     >
-      <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
-        <div className="h-8 w-8 shrink-0 rounded-sm bg-[var(--yellow)] shadow-[0_0_18px_rgba(245,168,0,0.3)]" />
+      {/* Left: Logo + Site name */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="h-8 w-8 shrink-0 rounded-sm bg-[var(--yellow)] shadow-[0_0_14px_rgba(245,168,0,0.3)]" />
         <div className="min-w-0 hidden sm:block">
-          <div className="heading truncate text-xs sm:text-sm tracking-[0.34em] text-[var(--yellow)]">SmartBed</div>
-          <div className="truncate text-[10px] sm:text-xs text-[var(--text-muted)]">{truckModel} | Mine Site Alpha • Eastern Operations</div>
-        </div>
-        <div className="hidden lg:block pl-1">
-          <TruckSelector />
+          <div className="heading truncate text-[13px] tracking-[0.34em] text-[var(--yellow)]">SmartBed</div>
+          <div className="truncate text-xs text-[var(--text-muted)]">{truckModel} | Mine Site Alpha</div>
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-1 sm:gap-3 text-center">
-        <div className="lg:hidden hidden md:block">
-          <TruckSelector />
-        </div>
+      {/* Center: Truck selector */}
+      <div className="order-3 w-full flex justify-center sm:order-none sm:w-auto sm:flex-1">
+        <TruckSelector />
+      </div>
+
+      {/* Right: Status indicators */}
+      <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
+        {connectionError && (
+          <div className="rounded-full border border-[#ef4444] bg-[rgba(127,29,29,0.3)] px-2 py-0.5 text-[10px] text-[#fca5a5]">ERR</div>
+        )}
         <motion.div
-          animate={{ boxShadow: ['0 0 0 rgba(245,168,0,0.0)', '0 0 18px rgba(245,168,0,0.28)', '0 0 0 rgba(245,168,0,0.0)'] }}
+          animate={{ boxShadow: ['0 0 0 rgba(245,168,0,0)', '0 0 12px rgba(245,168,0,0.25)', '0 0 0 rgba(245,168,0,0)'] }}
           transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-          className="rounded-full border border-[#2A2A31] bg-[#141417] px-2 py-1 sm:px-3 sm:py-1.5 text-[9px] sm:text-[10px] uppercase tracking-[0.28em] text-[var(--yellow)]"
+          className="rounded-full border border-[#2A2A31] bg-[#101418] px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] text-[var(--yellow)]"
           style={{ borderColor: stateTone }}
         >
           {stateLabel}
         </motion.div>
-        <div className="text-[9px] sm:text-xs text-[var(--text-muted)] hidden sm:block">
-          <span className="data text-[var(--text-primary)]">Cycle #{cycleNumber}</span>
-          <span className="mx-2 text-[#2f2f37]">|</span>
-          <span className="data text-[var(--text-primary)]">Bed: {state.bed_angle_deg.toFixed(1)}°</span>
-        </div>
-      </div>
 
-      <div className="flex items-center justify-end gap-1 sm:gap-3 text-right">
-        {connectionError ? (
-          <div className="rounded-full border border-[#ef4444] bg-[rgba(127,29,29,0.3)] px-2 py-1 text-[9px] text-[#fca5a5]">
-            BACKEND ERR
-          </div>
-        ) : null}
-        <div className="rounded-full border border-[#2A2A31] bg-[#141417] px-2 py-1 sm:px-3 sm:py-1.5 text-[9px] sm:text-xs text-[var(--text-muted)] hidden sm:block">
-          <span className="data mr-1 text-[var(--text-primary)]">⚡ {latencyMs.toFixed(0)}ms</span>
+        <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+          <span className="text-[#3a3f4e]">|</span>
+          <span className="data text-[var(--text-primary)]">Cycle #{cycleNumber}</span>
+          <span className="text-[#3a3f4e]">|</span>
+          <span className="data text-[var(--text-primary)]">Bed: {state.bed_angle_deg.toFixed(1)}°</span>
+          <span className="text-[#3a3f4e]">|</span>
+          <span className="data text-[var(--text-primary)]">⚡{latencyMs.toFixed(0)}ms</span>
         </div>
-        <div className="flex items-center gap-1 sm:gap-2 rounded-full border border-[#2A2A31] bg-[#141417] px-2 py-1 sm:px-3 sm:py-1.5">
-          <span className="relative flex h-2 sm:h-2.5 w-2 sm:w-2.5 items-center justify-center">
+
+        <div className="flex items-center gap-1.5 rounded-full border border-[#2A2A31] bg-[#101418] px-2 py-1">
+          <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--green)] opacity-30" />
             <span className={`relative inline-flex h-full w-full rounded-full ${connected ? 'bg-[var(--green)]' : 'bg-[var(--text-muted)]'}`} />
           </span>
-          <span className="heading text-[9px] sm:text-[10px] tracking-[0.26em] text-[var(--green)] hidden sm:inline">LIVE</span>
-          <span className="text-[8px] sm:text-[10px] uppercase tracking-[0.24em] text-[var(--text-muted)] hidden sm:inline">v4.2.1</span>
+          <span className="heading text-[10px] tracking-[0.2em] text-[var(--green)] hidden sm:inline">LIVE</span>
+          <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--text-muted)] hidden md:inline">v4.2.1</span>
         </div>
       </div>
     </motion.header>
   );
 }
 
+/* ─── App Root ────────────────────────────────────────────────────────────── */
 export default function App() {
   useSocket();
   useDumpCycleSequence();
-  // start background telemetry polling outside of React hook ordering
   useEffect(() => {
     const stop = startSimulationPolling();
     return stop;
   }, []);
 
   return (
-    <div className="h-screen overflow-hidden px-2 py-2 sm:px-3 sm:py-3 md:px-4 md:py-4">
-      <div className="grid h-full min-h-0 grid-rows-[56px_minmax(0,1fr)] gap-2 sm:gap-3 md:grid-rows-[64px_minmax(0,1fr)]">
+    <div className="h-screen overflow-hidden p-2 sm:p-3">
+      <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-2 sm:gap-3">
         <TopBar />
 
-        <main className="grid min-h-0 grid-cols-1 gap-2 sm:gap-3 md:grid-cols-[280px_1fr] lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)_320px]">
-        <motion.section
-          initial={{ x: -18, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.05, duration: 0.45 }}
-          className="panel min-h-0 overflow-hidden rounded-[16px] sm:rounded-[20px] md:rounded-[24px] p-0 md:col-span-1"
+        {/* ── Main 3-column layout (stacks on mobile) ──────────────── */}
+        <main className="grid min-h-0 gap-2 sm:gap-3
+          grid-cols-1 grid-rows-[1fr]
+          md:grid-cols-[260px_1fr]
+          xl:grid-cols-[260px_minmax(0,1fr)_260px]"
         >
-          <div className="flex h-full min-h-0 flex-col">
+          {/* Left: Control Panel */}
+          <motion.section
+            initial={{ x: -18, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.05, duration: 0.4 }}
+            className="panel min-h-0 overflow-hidden rounded-2xl p-0 hidden md:block"
+          >
             <ControlPanel />
-          </div>
-        </motion.section>
+          </motion.section>
 
-        <motion.section
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.1, duration: 0.6 }}
-          className="panel grid min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden rounded-[16px] sm:rounded-[20px] md:rounded-[24px] md:col-span-1 lg:col-span-1 xl:col-span-1"
-        >
-          <div className="relative min-h-0 overflow-hidden">
-            <TruckScene />
-          </div>
-          <div className="border-t border-[#1F1F26] bg-[#0b0b0d]/95 px-2 sm:px-3 md:px-4 py-2">
-            <DumpCycleTimer />
-          </div>
-        </motion.section>
+          {/* Center: 3D Viewport + Timeline */}
+          <motion.section
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.5 }}
+            className="panel grid min-h-0 grid-rows-[minmax(0,1fr)_auto] overflow-hidden rounded-2xl"
+          >
+            <div className="relative min-h-0 overflow-hidden">
+              <TruckScene />
+            </div>
+            <div className="border-t border-[var(--border)] bg-[#0b0c10]/95 px-3 py-2">
+              <DumpCycleTimer />
+            </div>
+          </motion.section>
 
-        <motion.section
-          initial={{ x: 18, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.12, duration: 0.45 }}
-          className="panel min-h-0 overflow-hidden rounded-[16px] sm:rounded-[20px] md:rounded-[24px] p-0 hidden lg:block lg:col-span-1 xl:col-span-1"
-        >
-          <SensorDashboard />
-        </motion.section>
+          {/* Right: Sensor Dashboard */}
+          <motion.section
+            initial={{ x: 18, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.12, duration: 0.4 }}
+            className="panel min-h-0 overflow-hidden rounded-2xl p-0 hidden xl:block"
+          >
+            <SensorDashboard />
+          </motion.section>
         </main>
         <DemoControl />
       </div>
