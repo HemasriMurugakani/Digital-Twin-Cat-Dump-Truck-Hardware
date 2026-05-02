@@ -42,7 +42,7 @@ export default function AcousticAnalysis() {
         </div>
       </div>
 
-      <div className="mt-3 h-12 w-full overflow-hidden">
+      <div className="mt-3 h-12 w-full overflow-hidden rounded border border-[#273447] bg-[#0a0f18] px-1 pt-1">
         <div className="flex h-full items-end gap-1">
           {spectrum.map((v, i) => (
             <div key={i} style={{ flex: 1 }}>
@@ -56,6 +56,11 @@ export default function AcousticAnalysis() {
             </div>
           ))}
         </div>
+      </div>
+      <div className="mt-2 flex items-center justify-between text-[10px] text-[var(--text-muted)]">
+        <span>Low band</span>
+        <span className="text-[var(--yellow)]">Signature window</span>
+        <span>High band</span>
       </div>
     </div>
   );

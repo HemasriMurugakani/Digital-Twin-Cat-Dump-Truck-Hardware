@@ -72,6 +72,10 @@ function buildZoneDetails(zoneScores = initialZones) {
 
 export const useSimulationStore = create((set) => ({
   connected: false,
+  backendConnected: false,
+  connectionError: null,
+  selectedTruck: 'cat793f',
+  truckSwitchToken: 0,
   truckId: 'CAT-793-11',
   truckModel: 'Caterpillar 793F',
   dumpState: 'IDLE',
@@ -125,6 +129,24 @@ export const useSimulationStore = create((set) => ({
   decisionLog: [],
 
   setConnected: (connected) => set({ connected }),
+
+  setSelectedTruck: (selectedTruck) =>
+    set((state) => ({
+      selectedTruck,
+      truckSwitchToken: state.truckSwitchToken + 1,
+      truckModel:
+        selectedTruck === 'cat797b'
+          ? 'Caterpillar 797B'
+          : selectedTruck === 'cat789c'
+            ? 'Caterpillar 789C'
+            : 'Caterpillar 793F',
+      truckId:
+        selectedTruck === 'cat797b'
+          ? 'CAT-797B'
+          : selectedTruck === 'cat789c'
+            ? 'CAT-789C'
+            : 'CAT-793F'
+    })),
 
   setScenario: (scenario) => set({ scenario }),
 
@@ -285,6 +307,8 @@ export const useSimulationStore = create((set) => ({
     set((prev) => {
       if (prev.dumpCycle?.active) {
         return {
+          backendConnected: true,
+          connectionError: null,
           latencyMs: payload.latency_ms ?? prev.latencyMs,
           history: [...prev.history.slice(-59), {
             t: payload.timestamp,
@@ -329,6 +353,8 @@ export const useSimulationStore = create((set) => ({
       };
 
       return {
+        backendConnected: true,
+        connectionError: null,
         state: {
           ...payload.state,
           speed:

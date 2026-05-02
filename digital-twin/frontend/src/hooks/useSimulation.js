@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import { useSimulationStore } from '../store/simulationStore';
 
 // Start a polling loop outside of React hooks to avoid impacting hook ordering.
@@ -22,11 +21,13 @@ export function startSimulationPolling(pollInterval = 1500) {
       if (!response.ok || !mounted) return;
       const data = await response.json();
       ingestTelemetry(data);
+      store.setState({ connectionError: null });
       if (control && control.command) {
         clearControlCommand();
       }
     } catch (err) {
-      // swallow network errors to keep UI responsive
+      console.warn('[useSimulation] Poll failed:', err?.message || String(err));
+      store.setState({ connectionError: err?.message || 'Polling failed' });
     }
   }
 

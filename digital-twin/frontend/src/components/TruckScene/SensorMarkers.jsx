@@ -408,7 +408,7 @@ export default function SensorMarkers({ degradedMode = false }) {
         <div className="sensor-label">
           <span className="sensor-name">CAMERA STATUS</span>
           <span className="sensor-value">{cameraDetected ? 'RESIDUE DETECTED' : 'CLEAR'}</span>
-          <span className="sensor-status">{dumpCycle?.active ? phase : phase}</span>
+          <span className="sensor-status">{phase}</span>
         </div>
       </Html>
     </group>

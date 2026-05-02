@@ -33,6 +33,7 @@ class FusionResult:
     reasoning: List[str] = field(default_factory=list)  # Human-readable explanations
     # Backward compatibility fields
     residue_risk: float = 0.0
+    residue_risk_level: str = 'LOW'
     action: str = 'NO_ACTION'
     rationale: str = ''
 
@@ -50,6 +51,7 @@ class FusionResult:
             'reasoning': self.reasoning,
             # Backward compat
             'residue_risk': round(self.residue_risk, 4),
+            'residue_risk_level': self.residue_risk_level,
             'action': self.action,
             'rationale': self.rationale,
         }
@@ -67,7 +69,8 @@ class FusionEngine:
     THRESHOLD = 0.65
 
     def __init__(self) -> None:
-        pass
+        self.prev_fused_score = 0.0
+        self.prev_above_threshold = False
 
     def fuse(
         self,
@@ -78,6 +81,7 @@ class FusionEngine:
         load_tonnes: float = 0.0,
         acoustic_deviation: float = 0.0,
         zones: Dict | None = None,
+        weights: Dict[str, float] | None = None,
     ) -> FusionResult:
         """
         Fuse four sensor modalities into residue/empty classification with reasoning.
@@ -93,6 +97,7 @@ class FusionEngine:
         """
         if zones is None:
             zones = {}
+        active_weights = weights or self.WEIGHTS
 
         # Step 1: Compute confidence for each sensor modality
         load_conf = self._load_confidence(load, load_tonnes)
@@ -101,15 +106,30 @@ class FusionEngine:
         us_conf = self._ultrasonic_confidence(ultrasonic)
 
         # Step 2: Weighted fusion
-        fused_score = (
-            self.WEIGHTS['load'] * load_conf
-            + self.WEIGHTS['acoustic'] * acoustic_conf
-            + self.WEIGHTS['vision'] * vision_conf
-            + self.WEIGHTS['ultrasonic'] * us_conf
+        fused_raw = (
+            active_weights['load'] * load_conf
+            + active_weights['acoustic'] * acoustic_conf
+            + active_weights['vision'] * vision_conf
+            + active_weights['ultrasonic'] * us_conf
         )
 
+        # Temporal smoothing plus threshold hysteresis to avoid toggling around boundary.
+        if abs(fused_raw - self.prev_fused_score) < 0.16:
+            fused_score = 0.72 * fused_raw + 0.28 * self.prev_fused_score
+        else:
+            fused_score = fused_raw
+
+        on_threshold = self.THRESHOLD + 0.02
+        off_threshold = self.THRESHOLD - 0.04
+        if self.prev_above_threshold:
+            above_threshold = fused_score >= off_threshold
+        else:
+            above_threshold = fused_score >= on_threshold
+        self.prev_above_threshold = above_threshold
+        self.prev_fused_score = fused_score
+
         # Step 3: Classification
-        result = 'RESIDUE' if fused_score >= self.THRESHOLD else 'EMPTY'
+        result = 'RESIDUE' if above_threshold else 'EMPTY'
         
         # Step 4: Status level
         if fused_score >= 0.80:
@@ -131,7 +151,14 @@ class FusionEngine:
         zone_analysis = self._map_zones(zones)
 
         # Step 7: Backward compat fields
-        residue_risk = fused_score  # Map fused score to residue risk
+        residue_risk = fused_score
+        if residue_risk >= 0.65:
+            residue_risk_level = 'HIGH'
+        elif residue_risk >= 0.35:
+            residue_risk_level = 'MEDIUM'
+        else:
+            residue_risk_level = 'LOW'
+
         if fused_score >= 0.75:
             action = 'ENGAGE_ELIMINATION_SEQUENCE'
             rationale = f'High residue confidence ({fused_score:.2f}): execute corrective action {zone_analysis["corrective_action"]}'
@@ -154,10 +181,11 @@ class FusionEngine:
             },
             fused_score=fused_score,
             threshold=self.THRESHOLD,
-            above_threshold=fused_score >= self.THRESHOLD,
+            above_threshold=above_threshold,
             zone_analysis=zone_analysis,
             reasoning=reasoning,
             residue_risk=residue_risk,
+            residue_risk_level=residue_risk_level,
             action=action,
             rationale=rationale,
         )
@@ -333,19 +361,20 @@ class SensorFusionEngine(FusionEngine):
         thermal_c = sensors.get('thermal_c', 35.0)
         lidar_mm = sensors.get('lidar_mm', 50.0)
 
-        # Map to new modalities
-        # acoustic_db (55-92 dB) → acoustic confidence
+        # Map sensor modalities with phase-aware weighting.
         acoustic_norm = self._norm(acoustic_db, 55.0, 92.0)
-
-        # vibration_g (0.25-1.25 g) → load proxy
         load_norm = self._norm(vibration_g, 0.25, 1.25)
         load_tonnes = vibration_g * 4.0  # Estimate tonnes from vibration
-
-        # thermal_c (34-57°C) → unused, set to 0
         vision_norm = self._norm(thermal_c, 34.0, 57.0)
-
-        # lidar_mm (8-85 mm) → ultrasonic proxy
         us_norm = self._norm(lidar_mm, 8.0, 85.0)
+
+        # During detection/correction phases, acoustic and thermal are more discriminative.
+        if phase in {'DUMP_HOLD', 'DETECTING', 'DUMP_LOWER'}:
+            modality_weights = {'load': 0.28, 'acoustic': 0.35, 'vision': 0.22, 'ultrasonic': 0.15}
+        else:
+            modality_weights = {'load': 0.33, 'acoustic': 0.28, 'vision': 0.19, 'ultrasonic': 0.20}
+
+        deviation = (acoustic_db - 68.0) + (thermal_c - 42.0) * 0.8
 
         # Call new fusion with mapped values
         return self.fuse(
@@ -354,6 +383,7 @@ class SensorFusionEngine(FusionEngine):
             vision=vision_norm,
             ultrasonic=us_norm,
             load_tonnes=load_tonnes,
-            acoustic_deviation=30.0 if acoustic_norm > 0.5 else 5.0,
+            acoustic_deviation=deviation,
             zones={},
+            weights=modality_weights,
         )

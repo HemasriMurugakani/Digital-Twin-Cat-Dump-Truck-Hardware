@@ -1,17 +1,17 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { DataTexture, MathUtils, RedFormat, RepeatWrapping, UnsignedByteType } from 'three';
+import { BackSide, Color, DataTexture, MathUtils, RepeatWrapping, UnsignedByteType } from 'three';
 import { useSimulationStore } from '../../store/simulationStore';
 
 function StarsField() {
   const positions = useMemo(() => {
-    const arr = new Float32Array(800 * 3);
-    for (let i = 0; i < 800; i += 1) {
+    const arr = new Float32Array(1200 * 3);
+    for (let i = 0; i < 1200; i += 1) {
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos(2 * Math.random() - 1);
-      const radius = 52 + Math.random() * 28;
+      const radius = 62 + Math.random() * 36;
       const i3 = i * 3;
-      arr[i3 + 0] = radius * Math.sin(phi) * Math.cos(theta);
+      arr[i3] = radius * Math.sin(phi) * Math.cos(theta);
       arr[i3 + 1] = radius * Math.cos(phi);
       arr[i3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
     }
@@ -23,159 +23,169 @@ function StarsField() {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial color="#FFFFFF" size={0.08} transparent opacity={0.85} depthWrite={false} />
+      <pointsMaterial color="#ffffff" size={0.08} transparent opacity={0.8} depthWrite={false} />
     </points>
   );
 }
 
-function DustParticles() {
-  const pointsRef = useRef(null);
-  const dumpCycle = useSimulationStore((s) => s.dumpCycle);
-
-  const { positions, baseY, offsets } = useMemo(() => {
-    const pos = new Float32Array(200 * 3);
-    const y = new Float32Array(200);
-    const offs = new Float32Array(200);
-
-    for (let i = 0; i < 200; i += 1) {
+function DustMotes() {
+  const motesRef = useRef(null);
+  const positions = useMemo(() => {
+    const arr = new Float32Array(40 * 3);
+    for (let i = 0; i < 40; i += 1) {
       const i3 = i * 3;
-      pos[i3 + 0] = (Math.random() - 0.5) * 30;
-      pos[i3 + 1] = 0.6 + Math.random() * 5;
-      pos[i3 + 2] = (Math.random() - 0.5) * 30;
-      y[i] = pos[i3 + 1];
-      offs[i] = Math.random() * Math.PI * 2;
-    }
-
-    return { positions: pos, baseY: y, offsets: offs };
-  }, []);
-
-  useFrame(({ clock }, delta) => {
-    if (!pointsRef.current) return;
-    const attr = pointsRef.current.geometry.getAttribute('position');
-    const time = clock.elapsedTime;
-    const dumpBoost = dumpCycle?.active ? 1.9 : 1;
-    const driftBoost = dumpCycle?.stage === 'DUMPING' ? 2.8 : dumpCycle?.stage === 'CORRECTING' ? 2.1 : 1;
-
-    for (let i = 0; i < 200; i += 1) {
-      const i3 = i * 3;
-      attr.array[i3 + 1] = baseY[i] + Math.sin(time * 0.55 * driftBoost + offsets[i]) * (0.12 + (dumpCycle?.stage === 'DUMPING' ? 0.08 : 0));
-      attr.array[i3 + 0] += Math.sin(time * 0.2 + offsets[i]) * delta * 0.18 * dumpBoost;
-      attr.array[i3 + 2] += Math.cos(time * 0.18 + offsets[i]) * delta * 0.18 * dumpBoost;
-
-      if (Math.abs(attr.array[i3 + 0]) > 18) attr.array[i3 + 0] *= -0.94;
-      if (Math.abs(attr.array[i3 + 2]) > 18) attr.array[i3 + 2] *= -0.94;
-    }
-    attr.needsUpdate = true;
-  });
-
-  return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-      </bufferGeometry>
-      <pointsMaterial color="#8B7355" size={dumpCycle?.stage === 'DUMPING' ? 0.06 : 0.05} transparent opacity={dumpCycle?.stage === 'DUMPING' ? 0.45 : 0.3} depthWrite={false} />
-    </points>
-  );
-}
-
-function GroundDustBurst() {
-  const burstRef = useRef(null);
-  const dumpCycle = useSimulationStore((s) => s.dumpCycle);
-  const burstData = useMemo(() => {
-    const arr = new Float32Array(120 * 3);
-    for (let i = 0; i < 120; i += 1) {
-      arr[i * 3 + 0] = (Math.random() - 0.5) * 10;
-      arr[i * 3 + 1] = 0.12 + Math.random() * 0.55;
-      arr[i * 3 + 2] = (Math.random() - 0.5) * 8;
+      arr[i3] = (Math.random() - 0.5) * 20;
+      arr[i3 + 1] = 0.8 + Math.random() * 6;
+      arr[i3 + 2] = (Math.random() - 0.5) * 20;
     }
     return arr;
   }, []);
 
   useFrame(({ clock }, delta) => {
-    if (!burstRef.current) return;
-    const active = dumpCycle?.stage === 'DUMPING' || dumpCycle?.stage === 'DETECTING' || dumpCycle?.stage === 'CORRECTING';
-    burstRef.current.visible = active && (dumpCycle?.tailgateOpen || dumpCycle?.active);
-    if (!burstRef.current.visible) return;
-
-    const attr = burstRef.current.geometry.getAttribute('position');
-    const time = clock.elapsedTime;
+    if (!motesRef.current) return;
+    const attr = motesRef.current.geometry.getAttribute('position');
+    const t = clock.elapsedTime;
     for (let i = 0; i < attr.count; i += 1) {
-      const base = i * 3;
-      attr.array[base + 1] += delta * 0.12 + Math.abs(Math.sin(time * 3 + i)) * 0.003;
-      attr.array[base + 0] += Math.sin(time * 1.7 + i) * 0.006;
-      attr.array[base + 2] += Math.cos(time * 1.2 + i) * 0.006;
-      if (attr.array[base + 1] > 1.6) {
-        attr.array[base + 0] = (Math.random() - 0.5) * 10;
-        attr.array[base + 1] = 0.12 + Math.random() * 0.55;
-        attr.array[base + 2] = (Math.random() - 0.5) * 8;
-      }
+      const i3 = i * 3;
+      attr.array[i3] += Math.sin(t * 0.12 + i) * delta * 0.2;
+      attr.array[i3 + 1] += Math.cos(t * 0.18 + i) * delta * 0.03;
+      attr.array[i3 + 2] += Math.sin(t * 0.1 + i) * delta * 0.16;
     }
     attr.needsUpdate = true;
   });
 
   return (
-    <points ref={burstRef} visible={false} position={[0, 0.18, 0]}>
+    <points ref={motesRef}>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[burstData, 3]} />
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial color="#C4B08C" size={0.08} opacity={0.55} transparent depthWrite={false} />
+      <pointsMaterial color="#f8fafc" size={0.06} transparent opacity={0.45} depthWrite={false} />
     </points>
   );
 }
 
-export default function EnvironmentSetup() {
-  const roughnessMap = useMemo(() => {
-    const size = 32;
-    const data = new Uint8Array(size * size);
-    for (let i = 0; i < data.length; i += 1) {
-      data[i] = Math.floor(MathUtils.lerp(48, 220, Math.random()));
-    }
+function DustImpactCloud() {
+  const phase = useSimulationStore((s) => s.state.phase);
+  const cloudRef = useRef([]);
 
-    const texture = new DataTexture(data, size, size, RedFormat, UnsignedByteType);
+  useFrame(({ clock }) => {
+    const active = phase === 'DUMPING';
+    const t = clock.elapsedTime;
+    for (let i = 0; i < cloudRef.current.length; i += 1) {
+      const cloud = cloudRef.current[i];
+      if (!cloud) continue;
+      cloud.visible = active;
+      if (!active) continue;
+      const life = (t + i * 0.13) % 2;
+      const scale = 1 + life * 2.4;
+      cloud.scale.set(scale, scale, scale);
+      cloud.material.opacity = Math.max(0, 0.5 - life * 0.24);
+    }
+  });
+
+  return (
+    <group position={[3, 0.06, 0]}>
+      {Array.from({ length: 20 }, (_, index) => (
+        <mesh
+          key={`dust-cloud-${index}`}
+          ref={(el) => {
+            cloudRef.current[index] = el;
+          }}
+          position={[(Math.random() - 0.5) * 2.6, 0, (Math.random() - 0.5) * 2.2]}
+          rotation={[-Math.PI / 2, 0, Math.random() * Math.PI]}
+          visible={false}
+        >
+          <circleGeometry args={[0.4, 12]} />
+          <meshBasicMaterial color="#8b6914" transparent opacity={0.3} depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+export default function EnvironmentSetup() {
+  const gridRef = useRef(null);
+
+  const groundTexture = useMemo(() => {
+    const size = 64;
+    const data = new Uint8Array(size * size * 3);
+    const c1 = new Color('#3d3220');
+    const c2 = new Color('#6e5530');
+    for (let i = 0; i < size * size; i += 1) {
+      const mix = Math.random() * 0.9;
+      const c = c1.clone().lerp(c2, mix);
+      data[i * 3] = Math.floor(c.r * 255);
+      data[i * 3 + 1] = Math.floor(c.g * 255);
+      data[i * 3 + 2] = Math.floor(c.b * 255);
+    }
+    const texture = new DataTexture(data, size, size, UnsignedByteType);
     texture.wrapS = RepeatWrapping;
     texture.wrapT = RepeatWrapping;
-    texture.repeat.set(10, 10);
+    texture.repeat.set(14, 14);
     texture.needsUpdate = true;
     return texture;
   }, []);
 
+  useFrame(() => {
+    if (!gridRef.current) return;
+    gridRef.current.material.transparent = true;
+    gridRef.current.material.opacity = 0.15;
+  });
+
   return (
     <>
-      <ambientLight intensity={0.3} color="#404040" />
-
+      <ambientLight intensity={0.3} color="#b0c4d8" />
       <directionalLight
-        position={[10, 20, 5]}
-        intensity={1.2}
-        color="#FFF8E7"
+        intensity={2.8}
+        color="#fff5e0"
+        position={[30, 50, 20]}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
-        shadow-camera-near={0.1}
-        shadow-camera-far={60}
-        shadow-camera-left={-20}
-        shadow-camera-right={20}
-        shadow-camera-top={20}
-        shadow-camera-bottom={-20}
+        shadow-camera-far={100}
+        shadow-camera-near={0.5}
       />
+      <directionalLight intensity={0.6} color="#4a6080" position={[-20, 10, -15]} />
+      <pointLight intensity={0.4} color="#c87530" position={[0, 0.5, 0]} distance={12} />
+      <hemisphereLight args={['#87ceeb', '#3d2b1a', 0.5]} />
 
-      <pointLight position={[-5, 3, 0]} color="#F5A800" intensity={2} distance={15} />
-      <pointLight position={[3, 5, 0]} color="#FFFFFF" intensity={0.8} />
-
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
-        <planeGeometry args={[200, 200]} />
-        <meshStandardMaterial
-          color="#1A1A1A"
-          roughness={0.9}
-          metalness={0.1}
-          roughnessMap={roughnessMap}
-        />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+        <planeGeometry args={[240, 240]} />
+        <meshStandardMaterial color="#3d3220" map={groundTexture} roughness={0.98} metalness={0.0} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
+        <cylinderGeometry args={[12, 12, 0.02, 32]} />
+        <meshBasicMaterial color="#8b6914" transparent opacity={0.35} />
       </mesh>
 
-      <gridHelper args={[40, 40, '#222222', '#222222']} position={[0, 0.02, 0]} />
+      <gridHelper ref={gridRef} args={[40, 40, '#2a2a2a', '#2a2a2a']} position={[0, 0.02, 0]} />
+
+      <mesh>
+        <sphereGeometry args={[400, 16, 16]} />
+        <meshBasicMaterial color="#2c3e50" side={BackSide} />
+      </mesh>
+      <mesh position={[0, -120, 0]}>
+        <sphereGeometry args={[399.5, 16, 16]} />
+        <meshBasicMaterial color="#8b7355" side={BackSide} transparent opacity={0.55} />
+      </mesh>
+
+      <group>
+        {[
+          [-30, 5, -35, 14],
+          [24, 7, -30, 16],
+          [35, 6, 20, 18],
+          [-34, 5, 25, 15]
+        ].map(([x, y, z, s], idx) => (
+          <mesh key={`mount-${idx}`} position={[x, y, z]} castShadow receiveShadow>
+            <coneGeometry args={[s, s * 1.3, 4]} />
+            <meshStandardMaterial color="#4a3520" roughness={0.95} metalness={0.05} />
+          </mesh>
+        ))}
+      </group>
 
       <StarsField />
-      <DustParticles />
-      <GroundDustBurst />
+      <DustMotes />
+      <DustImpactCloud />
     </>
   );
 }

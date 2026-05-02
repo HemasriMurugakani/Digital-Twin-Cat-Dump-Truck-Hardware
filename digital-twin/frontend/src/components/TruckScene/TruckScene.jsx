@@ -5,7 +5,6 @@ import { OrbitControls } from '@react-three/drei';
 import { useSimulationStore } from '../../store/simulationStore';
 import EnvironmentSetup from './EnvironmentSetup';
 import TruckBody from './TruckBody';
-import DumpBed from './DumpBed';
 import MaterialParticles from './MaterialParticles';
 import SensorMarkers from './SensorMarkers';
 import TruckLabels from './TruckLabels';
@@ -134,8 +133,8 @@ function CameraPresetPanel({ preset, onPresetChange }) {
             onClick={() => onPresetChange(key)}
             className={`rounded-full border px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.22em] transition ${
               active
-                ? 'border-[var(--yellow)] bg-[rgba(245,168,0,0.18)] text-[var(--yellow)] shadow-[0_0_18px_rgba(245,168,0,0.16)]'
-                : 'border-[#2A2A31] bg-[rgba(10,10,12,0.82)] text-[var(--text-muted)] hover:border-[var(--yellow)] hover:text-[var(--text-primary)]'
+                ? 'border-[#2a3a50] bg-[#111a28] text-[var(--yellow)] border-b-2 border-b-[var(--yellow)]'
+                : 'border-[#2A2A31] bg-[#101722] text-[var(--text-muted)] hover:border-[var(--yellow)] hover:text-[var(--text-primary)]'
             }`}
           >
             {label}
@@ -171,7 +170,7 @@ function PerformanceBadge() {
   }, []);
 
   return (
-    <div className="pointer-events-none absolute bottom-4 left-4 z-20 rounded-full border border-[#1F1F26] bg-[rgba(8,8,9,0.82)] px-4 py-2 text-[11px] text-[var(--text-muted)] shadow-[0_12px_30px_rgba(0,0,0,0.32)] backdrop-blur-sm">
+    <div className="pointer-events-none absolute bottom-8 left-4 z-20 rounded-full border border-[#2a3a50] bg-[rgba(5,9,15,0.92)] px-4 py-2 text-[11px] text-[#cbd5e1] shadow-[0_12px_30px_rgba(0,0,0,0.42)] backdrop-blur-sm">
       <span className="data text-[var(--text-primary)]">FPS: {fps}</span>
       <span className="mx-2 text-[#2F2F37]">|</span>
       <span className="data text-[var(--text-primary)]">Particles: {showParticles ? 800 : 0}</span>
@@ -181,41 +180,90 @@ function PerformanceBadge() {
   );
 }
 
+function CameraYawTracker({ onYaw }) {
+  const { camera } = useThree();
+  const tickRef = useRef(0);
+
+  useFrame(() => {
+    tickRef.current += 1;
+    if (tickRef.current % 4 !== 0) return;
+    onYaw(camera.rotation.y);
+  });
+
+  return null;
+}
+
 export default function TruckScene() {
   const phase = useSimulationStore((s) => s.state.phase);
   const alert = useSimulationStore((s) => s.alert);
   const dumpCycle = useSimulationStore((s) => s.dumpCycle);
-    const degradedMode = useSimulationStore((s) => s.degradedMode);
+  const degradedMode = useSimulationStore((s) => s.degradedMode);
+  const selectedTruck = useSimulationStore((s) => s.selectedTruck);
+  const truckSwitchToken = useSimulationStore((s) => s.truckSwitchToken);
   const [preset, setPreset] = useState('ISO');
+  const [cameraYaw, setCameraYaw] = useState(0);
+  const [loadingLabel, setLoadingLabel] = useState('');
   const controlsRef = useRef(null);
+
+  useEffect(() => {
+    if (!truckSwitchToken) return;
+    setPreset('ISO');
+    useSimulationStore.setState((state) => ({
+      bedAngle: 0,
+      hydraulicExtension: 0,
+      state: {
+        ...state.state,
+        bed_angle_deg: 0
+      }
+    }));
+
+    const name = selectedTruck === 'cat797b' ? 'CAT 797B' : selectedTruck === 'cat789c' ? 'CAT 789C' : 'CAT 793F';
+    setLoadingLabel(`Loading ${name}...`);
+    const timeout = window.setTimeout(() => setLoadingLabel(''), 1200);
+    return () => window.clearTimeout(timeout);
+  }, [selectedTruck, truckSwitchToken]);
 
   return (
     <div className="relative h-full w-full overflow-hidden">
       <CameraPresetPanel preset={preset} onPresetChange={setPreset} />
-            {degradedMode && (
-              <div className="pointer-events-none absolute right-4 top-20 z-20 rounded-lg border border-[#EF4444] bg-[rgba(239,68,68,0.1)] px-4 py-2 text-xs font-semibold text-[#EF4444] shadow-[0_0_18px_rgba(239,68,68,0.2)]">
-                ⚠ CAMERA: OFFLINE
-              </div>
-            )}
+      {degradedMode && (
+        <div className="pointer-events-none absolute right-4 top-20 z-20 rounded-lg border border-[#EF4444] bg-[rgba(239,68,68,0.1)] px-4 py-2 text-xs font-semibold text-[#EF4444] shadow-[0_0_18px_rgba(239,68,68,0.2)]">
+          ⚠ CAMERA: OFFLINE
+        </div>
+      )}
+      {loadingLabel ? (
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[#f59e0b] bg-[rgba(15,20,32,0.95)] px-6 py-3 text-sm font-semibold text-[#f59e0b] shadow-[0_0_24px_rgba(245,158,11,0.35)]">
+          {loadingLabel}
+        </div>
+      ) : null}
       <PerformanceBadge />
+      <div className="pointer-events-none absolute bottom-8 right-4 z-20 rounded-full border border-[#2a3a50] bg-[rgba(5,9,15,0.9)] px-3 py-2 text-[10px] text-[#9ca3af]">
+        <div className="relative h-10 w-10">
+          <div className="absolute inset-0 rounded-full border border-[#334155]" />
+          <div className="absolute left-1/2 top-1/2 h-4 w-[2px] -translate-x-1/2 -translate-y-full bg-[#f59e0b]" style={{ transform: `translate(-50%, -100%) rotate(${(-cameraYaw * 180) / Math.PI}deg)` }} />
+          <span className="absolute left-1/2 top-[2px] -translate-x-1/2 text-[9px]">N</span>
+          <span className="absolute bottom-[2px] left-1/2 -translate-x-1/2 text-[9px]">S</span>
+          <span className="absolute right-[2px] top-1/2 -translate-y-1/2 text-[9px]">E</span>
+          <span className="absolute left-[2px] top-1/2 -translate-y-1/2 text-[9px]">W</span>
+        </div>
+      </div>
       <Canvas
         shadows
         camera={{ position: cameraPresets.ISO.position, fov: 45 }}
         style={{ width: '100%', height: '100%' }}
       >
         <color attach="background" args={['#080809']} />
-        <fogExp2 attach="fog" args={['#080809', 0.015]} />
+        <fogExp2 attach="fog" args={['#8b7355', 0.008]} />
         <EnvironmentSetup />
         <WarningSpotlight enabled={alert || dumpCycle?.warningLights} />
         <WarningLightRig active={Boolean(alert || dumpCycle?.warningLights)} />
         <CameraPresetAnimator preset={preset} controlsRef={controlsRef} />
+        <CameraYawTracker onYaw={setCameraYaw} />
 
         <group position={[0, 0, 0]}>
           <TruckBody />
-          <DumpBed />
           <MaterialParticles />
-          <SensorMarkers />
-                    <SensorMarkers degradedMode={degradedMode} />
+          <SensorMarkers degradedMode={degradedMode} />
           <TruckLabels />
         </group>
 

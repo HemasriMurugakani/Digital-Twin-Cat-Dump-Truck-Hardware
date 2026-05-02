@@ -10,12 +10,17 @@ const BED_HEIGHT = 2.5;
 const BED_WIDTH = 8.5;
 const GROUND_LEVEL = 0.35;
 const STICK_ANGLE = 55;
-const COLOR_SET = ['#8B6914', '#5C4A1A', '#A07832', '#3D2E0D'];
-const BASE_COLORS = COLOR_SET.map((hex) => new Color(hex));
 const DUMP_FACTOR = 0.08;
 const GRAVITY = 0.012;
 const CORRECTION_IMPULSE_INTERVAL = 0.04;
 const CORRECTION_IMPULSE_MAGNITUDE = 0.3;
+
+const MATERIAL_COLOR_MAP = {
+  mixed: ['#2a2420', '#2a2420', '#2a2420', '#8b4513', '#8b4513'],
+  wet: ['#3d2b1a', '#3d2b1a', '#3d2b1a', '#2a2420', '#2a2420'],
+  dry: ['#c4a35a', '#c4a35a', '#888888', '#888888'],
+  sticky: ['#1a1208', '#1a1208', '#1a1208', '#8b4513']
+};
 
 const scenarioStickiness = {
   empty_truck: 0.06,
@@ -34,9 +39,15 @@ const materialStickiness = {
   mixed: 0.22
 };
 
-function makeParticle(index, stickyChance) {
+function materialColor(materialProfile, index) {
+  const key = materialProfile === 'wet_clay' ? 'wet' : materialProfile === 'dry_rock' ? 'dry' : materialProfile === 'fine_ore' ? 'mixed' : 'sticky';
+  const palette = MATERIAL_COLOR_MAP[key] ?? MATERIAL_COLOR_MAP.mixed;
+  return new Color(palette[index % palette.length]);
+}
+
+function makeParticle(index, stickyChance, materialProfile) {
   const sticky = Math.random() < stickyChance;
-  const baseColor = BASE_COLORS[index % BASE_COLORS.length].clone();
+  const baseColor = materialColor(materialProfile, index);
   const color = sticky ? baseColor.clone().multiplyScalar(0.82) : baseColor;
 
   return {
@@ -62,17 +73,13 @@ function makeParticle(index, stickyChance) {
   };
 }
 
-function cellKey(x, z) {
-  return `${x}:${z}`;
-}
-
 function getCellIndex(value, min, size) {
   const normalized = MathUtils.clamp((value - min) / size, 0, 0.9999);
   return Math.floor(normalized * GRID_SIZE);
 }
 
-function createParticleState(stickyChance) {
-  return Array.from({ length: PARTICLE_COUNT }, (_, index) => makeParticle(index, stickyChance));
+function createParticleState(stickyChance, materialProfile) {
+  return Array.from({ length: PARTICLE_COUNT }, (_, index) => makeParticle(index, stickyChance, materialProfile));
 }
 
 function createHeightGrid() {
@@ -87,9 +94,12 @@ const sharedMaterial = new MeshStandardMaterial({
 
 export default function MaterialParticles() {
   const meshRef = useRef(null);
-  const particles = useRef(createParticleState());
+  const particles = useRef(createParticleState(0.22, 'mixed'));
   const heightGrid = useRef(createHeightGrid());
   const correctionTimer = useRef(0);
+  const impactFlashRef = useRef([]);
+  const impactOriginRef = useRef([0, GROUND_LEVEL + 0.01, 0]);
+  const impactLifeRef = useRef(0);
 
   const bedAngle = useSimulationStore((s) => s.bedAngle ?? s.state.bed_angle_deg ?? 0);
   const hydraulicExtension = useSimulationStore((s) => s.hydraulicExtension ?? 0);
@@ -114,7 +124,7 @@ export default function MaterialParticles() {
     materialProfile === 'wet_clay' ? 0.72 : materialProfile === 'dry_rock' ? 1.12 : 1.0;
 
   useEffect(() => {
-    particles.current = createParticleState(stickyChance);
+    particles.current = createParticleState(stickyChance, materialProfile);
     heightGrid.current = createHeightGrid();
     correctionTimer.current = 0;
     const mesh = meshRef.current;
@@ -134,6 +144,7 @@ export default function MaterialParticles() {
     const mesh = meshRef.current;
     if (!mesh) return;
     correctionTimer.current += delta;
+    let impactTriggered = false;
 
     for (let i = 0; i < PARTICLE_COUNT; i += 1) {
       const particle = particles.current[i];
@@ -199,6 +210,11 @@ export default function MaterialParticles() {
       }
 
       if (particle.position[1] < GROUND_LEVEL) {
+        if (!impactTriggered) {
+          impactTriggered = true;
+          impactOriginRef.current = [particle.position[0], GROUND_LEVEL + 0.01, particle.position[2]];
+          impactLifeRef.current = 0.8;
+        }
         particle.position[1] = GROUND_LEVEL;
         particle.velocity[1] = -particle.velocity[1] * 0.3;
         particle.velocity[0] *= 0.8;
@@ -240,6 +256,28 @@ export default function MaterialParticles() {
       correctionTimer.current = 0;
     }
 
+    if (impactLifeRef.current > 0) {
+      impactLifeRef.current = Math.max(0, impactLifeRef.current - delta);
+      const lifeRatio = 1 - impactLifeRef.current / 0.8;
+      for (let i = 0; i < impactFlashRef.current.length; i += 1) {
+        const flash = impactFlashRef.current[i];
+        if (!flash) continue;
+        flash.visible = true;
+        flash.position.set(
+          impactOriginRef.current[0] + (i % 2 === 0 ? -0.15 : 0.15),
+          impactOriginRef.current[1] + i * 0.002,
+          impactOriginRef.current[2] + (i % 3 === 0 ? -0.12 : 0.12)
+        );
+        const scale = 0.25 + lifeRatio * (0.8 + i * 0.05);
+        flash.scale.set(scale, scale, scale);
+        flash.material.opacity = Math.max(0, 0.45 - lifeRatio * 0.45);
+      }
+    } else {
+      for (let i = 0; i < impactFlashRef.current.length; i += 1) {
+        if (impactFlashRef.current[i]) impactFlashRef.current[i].visible = false;
+      }
+    }
+
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   });
@@ -250,6 +288,19 @@ export default function MaterialParticles() {
         <dodecahedronGeometry args={[1, 0]} />
         <primitive attach="material" object={sharedMaterial} />
       </instancedMesh>
+      {Array.from({ length: 5 }, (_, index) => (
+        <mesh
+          key={`impact-flash-${index}`}
+          ref={(el) => {
+            impactFlashRef.current[index] = el;
+          }}
+          rotation={[-Math.PI / 2, 0, (index / 5) * Math.PI]}
+          visible={false}
+        >
+          <circleGeometry args={[0.4, 20]} />
+          <meshBasicMaterial color="#c4a35a" transparent opacity={0} depthWrite={false} />
+        </mesh>
+      ))}
     </group>
   );
 }

@@ -42,12 +42,12 @@ export default function AIDecisionLog() {
     if (scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight;
   }, [displayed.length]);
 
-  const visibleEntries = displayed.slice(0, 4);
+  const visibleEntries = displayed.slice(-8);
 
   return (
     <div className="rounded-md border border-[var(--border)] bg-[#0A0A0A] p-3">
       <p className="heading text-sm text-[var(--yellow)]">AI Decision Log</p>
-      <div ref={scroller} className="mt-2 max-h-28 overflow-hidden pr-1 font-jetbrains-mono text-[11px] text-[#22c55e]">
+      <div ref={scroller} className="mt-2 max-h-36 overflow-y-auto pr-1 font-jetbrains-mono text-[11px] text-[#22c55e]">
         {visibleEntries.length === 0 && <p className="text-xs text-[var(--text-muted)]">Awaiting events...</p>}
         {visibleEntries.map((entry, i) => {
           const color = colorMap[entry.type] ?? '#9CA3AF';

@@ -138,6 +138,7 @@ function addTimelineLog(action, rationale, risk) {
 export function useDumpCycleSequence() {
   const command = useSimulationStore((s) => s.control.command);
   const scenario = useSimulationStore((s) => s.scenario);
+  const backendConnected = useSimulationStore((s) => s.backendConnected);
   const sequenceRef = useRef({ active: false, startedAt: 0, rafId: 0, residueScenario: false, fired: new Set() });
 
   useEffect(() => {
@@ -167,7 +168,7 @@ export function useDumpCycleSequence() {
       return;
     }
 
-    if (command !== 'START_DUMP_CYCLE' || sequenceRef.current.active) {
+    if (backendConnected || command !== 'START_DUMP_CYCLE' || sequenceRef.current.active) {
       return;
     }
 
@@ -229,6 +230,10 @@ export function useDumpCycleSequence() {
     addTimelineLog('DUMP_START', '[HH:MM:SS] DUMP_START — bed angle 0° → target 52°', 0);
 
     const tick = (now) => {
+      if (useSimulationStore.getState().backendConnected) {
+        sequence.active = false;
+        return;
+      }
       const elapsedMs = now - startedAt;
       const stage = getStage(elapsedMs, residueScenario);
       const backendPhase = getBackendPhase(elapsedMs);
@@ -448,5 +453,5 @@ export function useDumpCycleSequence() {
       }
       sequenceRef.current = { active: false, startedAt: 0, rafId: 0, residueScenario: false, fired: new Set() };
     };
-  }, [command, scenario]);
+  }, [backendConnected, command, scenario]);
 }

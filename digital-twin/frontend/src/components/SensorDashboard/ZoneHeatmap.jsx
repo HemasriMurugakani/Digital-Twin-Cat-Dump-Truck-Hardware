@@ -19,9 +19,16 @@ export default function ZoneHeatmap({ zoneValues = {} }) {
         {/* trapezoid bed outline */}
         <defs>
           <linearGradient id="bedGrad" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#111113" />
-            <stop offset="100%" stopColor="#0b0b0d" />
+            <stop offset="0%" stopColor="#111827" />
+            <stop offset="100%" stopColor="#0b1220" />
           </linearGradient>
+          <filter id="zoneGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="2" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
         <polygon points="20,12 220,12 200,128 40,128" fill="url(#bedGrad)" stroke="#1F1F26" strokeWidth="1.5" />
 
@@ -35,7 +42,7 @@ export default function ZoneHeatmap({ zoneValues = {} }) {
           const color = zoneColor(z.v);
           return (
             <g key={z.key}>
-              <rect x={x} y={y} width="60" height="44" rx="6" ry="6" fill={color} opacity="0.9" stroke="#0b0b0d" />
+              <rect x={x} y={y} width="60" height="44" rx="6" ry="6" fill={color} opacity="0.9" stroke="#0b0b0d" filter={z.v > 0.7 ? 'url(#zoneGlow)' : undefined} />
               <text x={x + 8} y={y + 14} fontSize="10" fill="#000">{z.key}</text>
               <text x={x + 8} y={y + 30} fontSize="12" fill="#000" fontWeight="700">{(z.v * 10).toFixed(1)} t</text>
               <text x={x + 8} y={y + 40} fontSize="10" fill="#000">{Math.round(z.v * 100)}%</text>
@@ -50,7 +57,7 @@ export default function ZoneHeatmap({ zoneValues = {} }) {
           const color = zoneColor(z.v);
           return (
             <g key={z.key}>
-              <rect x={x} y={y} width="60" height="44" rx="6" ry="6" fill={color} opacity="0.9" stroke="#0b0b0d" />
+              <rect x={x} y={y} width="60" height="44" rx="6" ry="6" fill={color} opacity="0.9" stroke="#0b0b0d" filter={z.v > 0.7 ? 'url(#zoneGlow)' : undefined} />
               <text x={x + 8} y={y + 14} fontSize="10" fill="#000">{z.key}</text>
               <text x={x + 8} y={y + 30} fontSize="12" fill="#000" fontWeight="700">{(z.v * 10).toFixed(1)} t</text>
               <text x={x + 8} y={y + 40} fontSize="10" fill="#000">{Math.round(z.v * 100)}%</text>

@@ -92,8 +92,8 @@ function gaugeTone(value) {
 
 function SectionCard({ title, subtitle, children, className = '' }) {
   return (
-    <section className={`rounded-[22px] border border-[#1F1F26] bg-[#161619] p-4 ${className}`}>
-      <div className="mb-3">
+    <section className={`rounded-[22px] border border-[#1F1F26] bg-[#161619] p-4 transition hover:border-[#2a2a31] hover:shadow-[0_0_0_1px_rgba(245,168,0,0.05)] ${className}`}>
+      <div className="mb-4">
         <p className="heading text-[11px] tracking-[0.28em] text-[var(--yellow)]">{title}</p>
         {subtitle ? <p className="mt-1 text-xs text-[var(--text-muted)]">{subtitle}</p> : null}
       </div>
@@ -105,13 +105,13 @@ function SectionCard({ title, subtitle, children, className = '' }) {
 function SensorCard({ icon, label, value, unit, confidence, trend, detail, tone }) {
   const trendGlyph = trend > 0.01 ? '↑' : trend < -0.01 ? '↓' : '→';
   return (
-    <div className="rounded-xl border border-[#23232b] bg-[#0f0f12] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+    <div className="group rounded-xl border border-[#23232b] bg-[#0f0f12] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition hover:border-[#2a2a32] hover:bg-[#161619]">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-muted)]">{label}</p>
           <p className="mt-1 text-[11px] text-[var(--text-muted)]">{detail}</p>
         </div>
-        <div className="text-lg">{icon}</div>
+        <div className="text-lg group-hover:scale-110 transition-transform">{icon}</div>
       </div>
       <div className="mt-3 flex items-end justify-between gap-2">
         <div>
@@ -139,6 +139,7 @@ function SensorCard({ icon, label, value, unit, confidence, trend, detail, tone 
 function ConfidenceGauge({ value }) {
   const percentage = clamp(value) * 100;
   const tone = gaugeTone(value);
+  const glowOn = percentage >= 65;
   const radius = 78;
   const strokeWidth = 14;
   const startAngle = 135;
@@ -178,7 +179,7 @@ function ConfidenceGauge({ value }) {
             strokeDasharray={circumference}
             strokeDashoffset={dashOffset}
             style={{ transition: 'stroke-dashoffset 700ms ease, stroke 300ms ease' }}
-            filter="url(#gaugeGlow)"
+            filter={glowOn ? 'url(#gaugeGlow)' : undefined}
           />
           <line x1={marker.x} y1={marker.y} x2={marker.x - 12} y2={marker.y - 8} stroke="#F5A800" strokeWidth="2" strokeLinecap="round" />
           <line x1={currentPoint.x} y1={currentPoint.y} x2={currentPoint.x - 10} y2={currentPoint.y - 6} stroke={tone} strokeWidth="3" strokeLinecap="round" />
@@ -188,6 +189,33 @@ function ConfidenceGauge({ value }) {
           <p className="data text-5xl leading-none text-[var(--text-primary)]">{percentage.toFixed(0)}%</p>
           <p className="heading mt-2 text-sm text-[var(--yellow)]">{percentage >= 65 ? 'CARRY-BACK' : 'EMPTY'}</p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function BedAngleGauge({ angle, optimal }) {
+  const ratio = clamp(angle / 55);
+  const tone = Math.abs(angle - optimal) > 4.5 ? '#F59E0B' : '#22C55E';
+  const r = 34;
+  const c = Math.PI * r;
+  const dash = c * ratio;
+  return (
+    <div className="flex items-center gap-3">
+      <svg viewBox="0 0 90 52" className="h-16 w-24">
+        <path d="M10 45 A35 35 0 0 1 80 45" fill="none" stroke="#262a35" strokeWidth="7" strokeLinecap="round" />
+        <path
+          d="M10 45 A35 35 0 0 1 80 45"
+          fill="none"
+          stroke={tone}
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${c}`}
+        />
+      </svg>
+      <div>
+        <p className="data text-2xl text-[var(--yellow)]">{angle.toFixed(1)}°</p>
+        <p className="text-[10px] text-[var(--text-muted)]">Optimal {optimal.toFixed(1)}°</p>
       </div>
     </div>
   );
@@ -246,31 +274,31 @@ export default function ControlPanel() {
 
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden border-r border-[#1F1F26] bg-[#0F0F12] text-[var(--text-primary)]">
-      <div className="border-b border-[#1F1F26] px-4 py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-[var(--yellow)] text-[#0F0F12] shadow-[0_0_20px_rgba(245,168,0,0.25)]">
-            <span className="heading text-sm font-bold tracking-[0.15em]">SB</span>
+      <div className="sticky top-0 z-10 border-b border-[#1F1F26] bg-[#0F0F12]/95 px-2 sm:px-3 md:px-4 py-3 md:py-4 backdrop-blur-sm">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex h-8 sm:h-10 w-8 sm:w-10 items-center justify-center rounded-sm bg-[var(--yellow)] text-[#0F0F12] shadow-[0_0_20px_rgba(245,168,0,0.25)]">
+            <span className="heading text-xs sm:text-sm font-bold tracking-[0.15em]">SB</span>
           </div>
           <div className="min-w-0">
-            <p className="heading text-[11px] tracking-[0.35em] text-[var(--yellow)]">SmartBed</p>
-            <p className="data text-[26px] leading-none text-[var(--yellow)]">CAT 793-11</p>
-            <p className="mt-1 text-[10px] tracking-[0.34em] text-[var(--text-muted)]">DIGITAL TWIN SIMULATION</p>
+            <p className="heading text-[10px] sm:text-[11px] tracking-[0.35em] text-[var(--yellow)]">SmartBed</p>
+            <p className="data text-[18px] sm:text-[26px] leading-none text-[var(--yellow)]">CAT 793-11</p>
+            <p className="mt-0.5 sm:mt-1 text-[8px] sm:text-[10px] tracking-[0.34em] text-[var(--text-muted)]">DIGITAL TWIN SIMULATION</p>
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-2 text-[11px]">
-          <span className="relative flex h-2.5 w-2.5">
+        <div className="mt-2 sm:mt-4 flex items-center gap-2 text-[10px] sm:text-[11px]">
+          <span className="relative flex h-2 sm:h-2.5 w-2 sm:w-2.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--green)] opacity-30" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[var(--green)] shadow-[0_0_12px_rgba(34,197,94,0.5)]" />
+            <span className="relative inline-flex h-full w-full rounded-full bg-[var(--green)] shadow-[0_0_12px_rgba(34,197,94,0.5)]" />
           </span>
           <span className="heading tracking-[0.32em] text-[var(--green)]">LIVE</span>
-          <span className="ml-auto rounded-full border border-[#2A2A31] px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">
+          <span className="ml-auto rounded-full border border-[#2A2A31] px-1.5 sm:px-2 py-0.5 sm:py-1 text-[8px] sm:text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">
             {connected ? 'backend linked' : 'backend wait'}
           </span>
         </div>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-hidden px-4 py-4 relative z-20">
+      <div className="flex-1 space-y-3 overflow-y-auto px-2 sm:px-3 md:px-4 py-3 md:py-4 pb-6 relative z-20">
         <SectionCard title="Status" subtitle="Current dump cycle and material state">
           <div className="rounded-2xl border border-[#1F1F26] bg-[#161619] p-4">
             <div className="flex items-center justify-between gap-3">
@@ -295,15 +323,14 @@ export default function ControlPanel() {
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-[#23232b] bg-[#0f0f12] p-3">
+              <div className="rounded-xl border border-[#23232b] border-l-4 border-l-[var(--yellow)] bg-[#0f0f12] p-3">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-muted)]">Bed Angle</p>
-                <div className="mt-2 flex items-end gap-2">
-                  <p className="data text-3xl text-[var(--yellow)]">{(state.bed_angle_deg ?? 0).toFixed(1)}°</p>
-                  <p className="pb-1 text-[11px] text-[var(--text-muted)]">Optimal: {optimalAngle.toFixed(1)}°</p>
+                <div className="mt-2">
+                  <BedAngleGauge angle={state.bed_angle_deg ?? 0} optimal={optimalAngle} />
                 </div>
                 <p className="mt-2 text-[10px] text-[var(--text-muted)]">Delta {bedAngleDelta.toFixed(1)}°</p>
               </div>
-              <div className="rounded-xl border border-[#23232b] bg-[#0f0f12] p-3">
+              <div className="rounded-xl border border-[#23232b] border-l-4 border-l-[var(--blue)] bg-[#0f0f12] p-3">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--text-muted)]">Material</p>
                 <p className="mt-2 text-sm font-medium text-[var(--text-primary)]">{materialOptions.find((item) => item.key === materialProfile)?.label ?? 'Mixed'}</p>
                 <p className="mt-1 text-[10px] text-[var(--text-muted)]">Moisture {moisture.toFixed(1)}%</p>
@@ -321,10 +348,11 @@ export default function ControlPanel() {
                   key={option.key}
                   type="button"
                   onClick={() => setScenario(option.key)}
-                  className="rounded-2xl border px-3 py-3 text-left transition hover:brightness-110"
+                  className="rounded-full border px-3 py-2 text-left transition hover:brightness-110"
                   style={{
                     borderColor: selected ? option.accent : '#23232b',
-                    background: selected ? `${option.accent}14` : '#0f0f12'
+                    background: selected ? `${option.accent}14` : '#0f0f12',
+                    boxShadow: selected ? `0 0 12px ${option.accent}20` : 'none'
                   }}
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -353,28 +381,28 @@ export default function ControlPanel() {
             <button
               type="button"
               onClick={startDumpCycle}
-              className="rounded-2xl border border-[#F5A800] bg-[var(--yellow)] px-4 py-3 text-left text-sm font-semibold text-black shadow-[0_0_18px_rgba(245,168,0,0.22)]"
+              className="rounded-2xl border border-[#F5A800] bg-[var(--yellow)] px-4 py-3 text-left text-sm font-semibold text-black shadow-[0_0_18px_rgba(245,168,0,0.22)] transition hover:shadow-[0_0_24px_rgba(245,168,0,0.35)] hover:brightness-110"
             >
               ▶ START DUMP CYCLE
             </button>
             <button
               type="button"
               onClick={pauseCycle}
-              className="rounded-2xl border border-[#2A2A31] bg-[#2A2A31] px-4 py-3 text-left text-sm font-semibold text-[var(--text-primary)]"
+              className="rounded-2xl border border-[#2A2A31] bg-[#2A2A31] px-4 py-3 text-left text-sm font-semibold text-[var(--text-primary)] transition hover:border-[#3A3A41] hover:bg-[#3A3A41]"
             >
               {control.isPaused ? '▶ RESUME' : '⏸ PAUSE'}
             </button>
             <button
               type="button"
               onClick={stopAndResetCycle}
-              className="rounded-2xl border border-[#7f1d1d] bg-[#2a0f10] px-4 py-3 text-left text-sm font-semibold text-[#fca5a5]"
+              className="rounded-2xl border border-[#7f1d1d] bg-[#2a0f10] px-4 py-3 text-left text-sm font-semibold text-[#fca5a5] transition hover:border-[#a02020] hover:bg-[#3a1515]"
             >
               ⏹ STOP & RESET
             </button>
             <button
               type="button"
               onClick={triggerVibration}
-              className="rounded-2xl border border-[var(--amber)] bg-[rgba(245,158,11,0.12)] px-4 py-3 text-left text-sm font-semibold text-[var(--amber)]"
+              className="rounded-2xl border border-[var(--amber)] bg-[rgba(245,158,11,0.12)] px-4 py-3 text-left text-sm font-semibold text-[var(--amber)] transition hover:bg-[rgba(245,158,11,0.24)] hover:shadow-[0_0_12px_rgba(245,158,11,0.2)]"
             >
               ⚡ TRIGGER VIBRATION
             </button>
@@ -383,8 +411,8 @@ export default function ControlPanel() {
               onClick={toggleShowZones}
               className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
                 showZones
-                  ? 'border-[var(--blue)] bg-[rgba(59,130,246,0.14)] text-[var(--text-primary)]'
-                  : 'border-[#2A2A31] bg-[#0f0f12] text-[var(--text-muted)] hover:border-[var(--blue)]'
+                  ? 'border-[var(--blue)] bg-[rgba(59,130,246,0.14)] text-[var(--text-primary)] hover:bg-[rgba(59,130,246,0.24)]'
+                  : 'border-[#2A2A31] bg-[#0f0f12] text-[var(--text-muted)] hover:border-[var(--blue)] hover:bg-[rgba(59,130,246,0.08)]'
               }`}
             >
               📊 {showZones ? 'HIDE ZONES' : 'SHOW ZONES'}
