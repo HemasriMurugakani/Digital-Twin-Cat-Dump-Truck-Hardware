@@ -17,10 +17,8 @@ const CORRECTION_IMPULSE_MAGNITUDE = 0.3;
 
 // Per-truck particle bed config
 const PARTICLE_BED = {
-  // 793F/797F were scaled up, so their residue anchors must sit lower and tighter inside the bed.
-  cat793f: { position: [0.05, 1.62, 0], bedLength: 3.2, bedHeight: 0.62, bedWidth: 3.25, wallInset: 0.2 },
+  cat789c_rigged: { position: [-0.25, 3.4, 0], bedLength: 2.1, bedHeight: 0.36, bedWidth: 2.15, wallInset: 0.12 },
   cat797b: { position: [0.08, 1.72, 0], bedLength: 3.45, bedHeight: 0.68, bedWidth: 3.45, wallInset: 0.22 },
-  cat789c: { position: [-0.25, 0.78, 0], bedLength: 2.1, bedHeight: 0.36, bedWidth: 2.15, wallInset: 0.12 },
 };
 
 const MATERIAL_COLOR_MAP = {
@@ -47,6 +45,12 @@ const materialStickiness = {
   mixed: 0.22
 };
 
+const MOCK_ZONE_DATA = {
+  R1C1: true, R1C2: true, R1C3: true,
+  R2C1: true, R2C2: true, R2C3: true,
+  R3C1: true, R3C2: true, R3C3: true,
+};
+
 function materialColor(materialProfile, index) {
   const key =
     materialProfile === 'wet_clay'
@@ -60,20 +64,63 @@ function materialColor(materialProfile, index) {
   return new Color(palette[index % palette.length]);
 }
 
-function makeParticle(index, stickyChance, materialProfile, bedL = BED_LENGTH, bedH = BED_HEIGHT, bedW = BED_WIDTH) {
+function getZoneBounds(zone, bedL, bedW) {
+  const row = parseInt(zone[1], 10); // 1, 2, 3
+  const col = parseInt(zone[3], 10); // 1, 2, 3
+
+  // Row 1 is front (positive X), Row 3 is rear (negative X)
+  const rowSize = bedL / 3;
+  const startX = (bedL / 2) - (row * rowSize);
+  const endX = startX + rowSize;
+
+  // Col 1 is left (positive Z), Col 3 is right (negative Z)
+  const colSize = bedW / 3;
+  const startZ = (bedW / 2) - (col * colSize);
+  const endZ = startZ + colSize;
+
+  return { minX: startX, maxX: endX, minZ: startZ, maxZ: endZ };
+}
+
+function makeParticle(index, stickyChance, materialProfile, bedL = BED_LENGTH, bedH = BED_HEIGHT, bedW = BED_WIDTH, activeZones = []) {
   const sticky = Math.random() < stickyChance;
   const baseColor = materialColor(materialProfile, index);
   const color = sticky ? baseColor.clone().multiplyScalar(0.82) : baseColor;
 
-  // Spawn as a settled residue mound rather than a floating rectangular block.
-  const angle = Math.random() * Math.PI * 2;
-  const radial = Math.sqrt(Math.random());
-  const x = Math.cos(angle) * radial * bedL * 0.38 + (Math.random() - 0.5) * bedL * 0.08;
-  const z = Math.sin(angle) * radial * bedW * 0.38 + (Math.random() - 0.5) * bedW * 0.08;
-  const xNorm = x / Math.max(0.001, bedL * 0.5);
-  const zNorm = z / Math.max(0.001, bedW * 0.5);
-  const centerFalloff = Math.max(0, 1 - (xNorm * xNorm + zNorm * zNorm));
-  const y = 0.03 + Math.random() * 0.04 + centerFalloff * bedH * (0.18 + Math.random() * 0.22);
+  let x = 0;
+  let z = 0;
+  let y = 0;
+
+  if (activeZones.length > 0) {
+    // Pick a random active zone for this particle
+    const zone = activeZones[index % activeZones.length];
+    const bounds = getZoneBounds(zone, bedL, bedW);
+
+    // Add some margin so particles don't spawn exactly on the edges
+    const marginX = (bounds.maxX - bounds.minX) * 0.1;
+    const marginZ = (bounds.maxZ - bounds.minZ) * 0.1;
+
+    x = bounds.minX + marginX + Math.random() * (bounds.maxX - bounds.minX - 2 * marginX);
+    z = bounds.minZ + marginZ + Math.random() * (bounds.maxZ - bounds.minZ - 2 * marginZ);
+
+    // Falloff for height based on center of the zone
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    const centerZ = (bounds.minZ + bounds.maxZ) / 2;
+    const dx = (x - centerX) / ((bounds.maxX - bounds.minX) / 2);
+    const dz = (z - centerZ) / ((bounds.maxZ - bounds.minZ) / 2);
+    const centerFalloff = Math.max(0, 1 - (dx * dx + dz * dz));
+
+    y = 0.03 + Math.random() * 0.04 + centerFalloff * bedH * (0.18 + Math.random() * 0.22);
+  } else {
+    // Spawn as a settled residue mound rather than a floating rectangular block.
+    const angle = Math.random() * Math.PI * 2;
+    const radial = Math.sqrt(Math.random());
+    x = Math.cos(angle) * radial * bedL * 0.38 + (Math.random() - 0.5) * bedL * 0.08;
+    z = Math.sin(angle) * radial * bedW * 0.38 + (Math.random() - 0.5) * bedW * 0.08;
+    const xNorm = x / Math.max(0.001, bedL * 0.5);
+    const zNorm = z / Math.max(0.001, bedW * 0.5);
+    const centerFalloff = Math.max(0, 1 - (xNorm * xNorm + zNorm * zNorm));
+    y = 0.03 + Math.random() * 0.04 + centerFalloff * bedH * (0.18 + Math.random() * 0.22);
+  }
 
   return {
     position: [
@@ -103,8 +150,8 @@ function getCellIndex(value, min, size) {
   return Math.floor(normalized * GRID_SIZE);
 }
 
-function createParticleState(stickyChance, materialProfile, bedL, bedH, bedW) {
-  return Array.from({ length: PARTICLE_COUNT }, (_, index) => makeParticle(index, stickyChance, materialProfile, bedL, bedH, bedW));
+function createParticleState(stickyChance, materialProfile, bedL, bedH, bedW, activeZones = []) {
+  return Array.from({ length: PARTICLE_COUNT }, (_, index) => makeParticle(index, stickyChance, materialProfile, bedL, bedH, bedW, activeZones));
 }
 
 function createHeightGrid() {
@@ -119,7 +166,8 @@ const sharedMaterial = new MeshStandardMaterial({
 
 export default function MaterialParticles() {
   const meshRef = useRef(null);
-  const particles = useRef(createParticleState(0.22, 'mixed'));
+  const activeZones = Object.keys(MOCK_ZONE_DATA).filter(z => MOCK_ZONE_DATA[z]);
+  const particles = useRef(createParticleState(0.22, 'mixed', BED_LENGTH, BED_HEIGHT, BED_WIDTH, activeZones));
   const heightGrid = useRef(createHeightGrid());
   const correctionTimer = useRef(0);
   const impactFlashRef = useRef([]);
@@ -133,15 +181,15 @@ export default function MaterialParticles() {
   const dumpCycle = useSimulationStore((s) => s.dumpCycle);
   const scenario = useSimulationStore((s) => s.scenario);
   const materialProfile = useSimulationStore((s) => s.materialProfile);
-  const selectedTruck = useSimulationStore((s) => s.selectedTruck ?? 'cat793f');
-  const bedCfg = PARTICLE_BED[selectedTruck] ?? PARTICLE_BED.cat793f;
+  const selectedTruck = useSimulationStore((s) => s.selectedTruck ?? 'cat789c_rigged');
+  const bedCfg = PARTICLE_BED[selectedTruck] ?? PARTICLE_BED.cat789c_rigged;
 
   // temp object used to build instance matrices
   const tempObj = useRef(new Object3D());
 
   const stickyChance = MathUtils.clamp(
     (scenarioStickiness[scenario] ?? scenarioStickiness.partial_residue) +
-      (materialStickiness[materialProfile] ?? materialStickiness.mixed),
+    (materialStickiness[materialProfile] ?? materialStickiness.mixed),
     0.02,
     0.7
   );
@@ -151,7 +199,8 @@ export default function MaterialParticles() {
     materialProfile === 'wet_clay' ? 0.72 : materialProfile === 'dry_rock' ? 1.12 : 1.0;
 
   useEffect(() => {
-    particles.current = createParticleState(stickyChance, materialProfile, bedCfg.bedLength, bedCfg.bedHeight, bedCfg.bedWidth);
+    const activeZones = Object.keys(MOCK_ZONE_DATA).filter(z => MOCK_ZONE_DATA[z]);
+    particles.current = createParticleState(stickyChance, materialProfile, bedCfg.bedLength, bedCfg.bedHeight, bedCfg.bedWidth, activeZones);
     heightGrid.current = createHeightGrid();
     correctionTimer.current = 0;
     const mesh = meshRef.current;

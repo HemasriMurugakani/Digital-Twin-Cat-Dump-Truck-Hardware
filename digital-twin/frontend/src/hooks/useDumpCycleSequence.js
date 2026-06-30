@@ -17,10 +17,18 @@ function clamp(value, min = 0, max = 1) {
 
 function makeZoneValues(active) {
   if (!active) {
-    return { FL: 0.08, FC: 0.05, FR: 0.07, RL: 0.06, RC: 0.04, RR: 0.04 };
+    return {
+      R1C1: 0.08, R1C2: 0.05, R1C3: 0.07,
+      R2C1: 0.06, R2C2: 0.04, R2C3: 0.04,
+      R3C1: 0.05, R3C2: 0.03, R3C3: 0.04
+    };
   }
 
-  return { FL: 0.91, FC: 0.12, FR: 0.09, RL: 0.87, RC: 0.11, RR: 0.08 };
+  return {
+    R1C1: 0.91, R1C2: 0.12, R1C3: 0.09,
+    R2C1: 0.87, R2C2: 0.11, R2C3: 0.08,
+    R3C1: 0.66, R3C2: 0.10, R3C3: 0.74
+  };
 }
 
 function playTone({ frequency = 220, duration = 0.25, gain = 0.06 } = {}) {
@@ -267,7 +275,7 @@ export function useDumpCycleSequence() {
             : 675
         : 0;
       const cameraZones = stage === STAGE.CARRY_BACK_DETECTED || stage === STAGE.CORRECTING
-        ? ['FL', 'RL']
+        ? ['R1C1', 'R2C1']
         : stage === STAGE.VERIFYING
           ? []
           : [];
@@ -384,7 +392,7 @@ export function useDumpCycleSequence() {
       if (!fired.has('a6') && elapsedMs >= 6800) {
         fired.add('a6');
         addTimelineLog('CAMERA_ZONES', residueScenario
-          ? '[T+6s] CAMERA — residue_zones: [FL, RL] detected'
+          ? '[T+6s] CAMERA — residue_zones: [R1C1, R2C1] detected'
           : '[T+6s] CAMERA — residue_zones: [] detected',
         residueScenario ? 0.87 : 0.14);
       }

@@ -4,7 +4,11 @@ const initialSensors = {
   acoustic_db: 0,
   vibration_g: 0,
   thermal_c: 0,
-  lidar_mm: 0
+  lidar_mm: 0,
+  ultra_left: 0,
+  ultra_right: 0,
+  angle: 0,
+  weight: 0
 };
 
 const initialSensorReadings = {
@@ -15,12 +19,15 @@ const initialSensorReadings = {
 };
 
 const initialZones = {
-  FL: 0,
-  FC: 0,
-  FR: 0,
-  RL: 0,
-  RC: 0,
-  RR: 0
+  R1C1: 0,
+  R1C2: 0,
+  R1C3: 0,
+  R2C1: 0,
+  R2C2: 0,
+  R2C3: 0,
+  R3C1: 0,
+  R3C2: 0,
+  R3C3: 0
 };
 
 const initialControl = {
@@ -74,10 +81,10 @@ export const useSimulationStore = create((set) => ({
   connected: false,
   backendConnected: false,
   connectionError: null,
-  selectedTruck: 'cat793f',
+  selectedTruck: 'cat789c_rigged',
   truckSwitchToken: 0,
-  truckId: 'CAT-793-11',
-  truckModel: 'Caterpillar 793F',
+  truckId: 'CAT-789C',
+  truckModel: 'Caterpillar 789C',
   dumpState: 'IDLE',
   bedAngle: 0,
   hydraulicExtension: 0,
@@ -136,16 +143,12 @@ export const useSimulationStore = create((set) => ({
       truckSwitchToken: state.truckSwitchToken + 1,
       truckModel:
         selectedTruck === 'cat797b'
-          ? 'Caterpillar 797B'
-          : selectedTruck === 'cat789c'
-            ? 'Caterpillar 789C'
-            : 'Caterpillar 793F',
+          ? 'Caterpillar 797F'
+          : 'Caterpillar 789C',
       truckId:
         selectedTruck === 'cat797b'
-          ? 'CAT-797B'
-          : selectedTruck === 'cat789c'
-            ? 'CAT-789C'
-            : 'CAT-793F'
+          ? 'CAT-797F'
+          : 'CAT-789C'
     })),
 
   setScenario: (scenario) => set({ scenario }),
@@ -299,7 +302,11 @@ export const useSimulationStore = create((set) => ({
 
       return {
         bedAngle: nextBedAngle,
-        hydraulicExtension: nextExtension
+        hydraulicExtension: nextExtension,
+        state: {
+          ...prev.state,
+          bed_angle_deg: nextBedAngle
+        }
       };
     }),
 
@@ -316,6 +323,10 @@ export const useSimulationStore = create((set) => ({
             vibration: payload.sensors?.vibration_g ?? prev.sensors.vibration_g,
             thermal: payload.sensors?.thermal_c ?? prev.sensors.thermal_c,
             lidar: payload.sensors?.lidar_mm ?? prev.sensors.lidar_mm,
+            ultra_left: payload.sensors?.ultra_left ?? prev.sensors.ultra_left,
+            ultra_right: payload.sensors?.ultra_right ?? prev.sensors.ultra_right,
+            angle: payload.sensors?.angle ?? prev.sensors.angle,
+            weight: payload.sensors?.weight ?? prev.sensors.weight,
             risk: prev.fusion?.residue_risk ?? 0
           }],
           historyBySignal: {
@@ -339,6 +350,10 @@ export const useSimulationStore = create((set) => ({
         vibration: payload.sensors.vibration_g,
         thermal: payload.sensors.thermal_c,
         lidar: payload.sensors.lidar_mm,
+        ultra_left: payload.sensors.ultra_left,
+        ultra_right: payload.sensors.ultra_right,
+        angle: payload.sensors.angle,
+        weight: payload.sensors.weight,
         risk: payload.fusion.residue_risk
       };
 

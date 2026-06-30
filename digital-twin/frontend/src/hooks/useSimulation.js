@@ -40,3 +40,4 @@ export function startSimulationPolling(pollInterval = 1500) {
     clearInterval(id);
   };
 }
+

@@ -5,7 +5,11 @@ export const sensorBounds = {
   lidar_mm: [8, 85]
 };
 
-const zoneNames = ['FL', 'FC', 'FR', 'RL', 'RC', 'RR'];
+const zoneNames = [
+  'R1C1', 'R1C2', 'R1C3',
+  'R2C1', 'R2C2', 'R2C3',
+  'R3C1', 'R3C2', 'R3C3',
+];
 
 function clamp(value, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
@@ -132,9 +136,13 @@ export class SensorEngine {
       let residueProbability = 0;
 
       if (scenario === 'RESIDUE_PARTIAL' || scenario === 'partial_residue') {
-        residueProbability = zone === 'FL' || zone === 'RL' ? 0.94 : 0.08;
+        residueProbability = zone === 'R1C1' || zone === 'R2C1' ? 0.94 : 0.08;
       } else if (scenario === 'RESIDUE_FULL' || scenario === 'full_residue') {
-        residueProbability = { FL: 0.96, FC: 0.88, FR: 0.91, RL: 0.94, RC: 0.85, RR: 0.82 }[zone];
+        residueProbability = {
+          R1C1: 0.96, R1C2: 0.88, R1C3: 0.91,
+          R2C1: 0.94, R2C2: 0.85, R2C3: 0.82,
+          R3C1: 0.90, R3C2: 0.78, R3C3: 0.80
+        }[zone];
       }
 
       const detectionNoise = (Math.random() - 0.5) * 0.05;
@@ -143,7 +151,7 @@ export class SensorEngine {
       zoneResults[zone] = {
         residue: detected,
         confidence: clamp(Math.abs(residueProbability + detectionNoise), 0, 0.99),
-        tonnes: detected ? (zone.startsWith('F') ? 2.8 : 2.5) * residueProbability : 0,
+        tonnes: detected ? (zone.startsWith('R1') ? 2.8 : zone.startsWith('R2') ? 2.5 : 2.2) * residueProbability : 0,
         bbox: { x: 0, y: 0, w: 0, h: 0 }
       };
     }
@@ -222,6 +230,10 @@ export function toChartSeries(history) {
       vibration: item.vibration,
       thermal: item.thermal,
       lidar: item.lidar,
+      ultra_left: item.ultra_left,
+      ultra_right: item.ultra_right,
+      angle: item.angle,
+      weight: item.weight,
       risk: item.risk
     }));
   }
@@ -242,6 +254,10 @@ export function toChartSeries(history) {
     vibration: history?.load?.[index] ?? 0,
     thermal: history?.camera?.[index] ?? 0,
     lidar: history?.ultrasonic?.[index] ?? 0,
+    ultra_left: history?.ultra_left?.[index] ?? 0,
+    ultra_right: history?.ultra_right?.[index] ?? 0,
+    angle: history?.angle?.[index] ?? 0,
+    weight: history?.weight?.[index] ?? 0,
     risk: history?.fused?.[index] ?? 0,
     t: timestamps[index]
   }));

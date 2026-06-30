@@ -14,14 +14,14 @@ const loadHighColor = new Color('#EF4444');
 
 // Per-truck sensor position configs
 const SENSOR_POSITIONS = {
-  cat793f: {
-    camera: [2.7, 4.15, 0],
-    cameraStatus: [2.7, 4.9, 0],
-    acoustic: [-1.55, 3.45, 1.95],
-    ultrasonic: [[1.4, 3.25, 0]],
-    loadCells: [[1.9, 0.72, 1.85], [1.9, 0.72, -1.85], [-1.9, 0.72, 1.85], [-1.9, 0.72, -1.85]],
-    loadLabel: [-1.9, 0.22, 0],
-    scanLines: [1.25, 0.18, 0],
+  cat789c_rigged: {
+    camera: [1.8, 3.8, 0],
+    cameraStatus: [1.8, 4.5, 0],
+    acoustic: [-1.5, 3.2, 1.8],
+    ultrasonic: [[0.5, 3.2, 0]],
+    loadCells: [[1.5, 0.6, 1.5], [1.5, 0.6, -1.5], [-2.0, 0.6, 1.5], [-2.0, 0.6, -1.5]],
+    loadLabel: [-2.0, 0.2, 0],
+    scanLines: [0.5, 0.15, 0],
   },
   cat797b: {
     camera: [2.9, 4.35, 0],
@@ -31,15 +31,6 @@ const SENSOR_POSITIONS = {
     loadCells: [[2.1, 0.8, 2.0], [2.1, 0.8, -2.0], [-2.1, 0.8, 2.0], [-2.1, 0.8, -2.0]],
     loadLabel: [-2.05, 0.25, 0],
     scanLines: [1.35, 0.2, 0],
-  },
-  cat789c: {
-    camera: [1.8, 3.8, 0],
-    cameraStatus: [1.8, 4.5, 0],
-    acoustic: [-1.5, 3.2, 1.8],
-    ultrasonic: [[0.5, 3.2, 0]],
-    loadCells: [[1.5, 0.6, 1.5], [1.5, 0.6, -1.5], [-2.0, 0.6, 1.5], [-2.0, 0.6, -1.5]],
-    loadLabel: [-2.0, 0.2, 0],
-    scanLines: [0.5, 0.15, 0],
   },
 };
 
@@ -329,8 +320,8 @@ export default function SensorMarkers({ degradedMode = false }) {
   const hydraulicExtension = useSimulationStore((s) => s.hydraulicExtension ?? 0);
   const scenario = useSimulationStore((s) => s.scenario);
   const materialProfile = useSimulationStore((s) => s.materialProfile);
-  const selectedTruck = useSimulationStore((s) => s.selectedTruck ?? 'cat793f');
-  const sp = SENSOR_POSITIONS[selectedTruck] ?? SENSOR_POSITIONS.cat793f;
+  const selectedTruck = useSimulationStore((s) => s.selectedTruck ?? 'cat789c_rigged');
+  const sp = SENSOR_POSITIONS[selectedTruck] ?? SENSOR_POSITIONS.cat789c_rigged;
 
   useEffect(() => {
     if (typeof document === 'undefined') return;

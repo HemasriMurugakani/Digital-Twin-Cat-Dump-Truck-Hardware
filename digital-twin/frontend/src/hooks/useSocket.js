@@ -19,6 +19,36 @@ export function useSocket() {
     socket.on('disconnect', () => setConnected(false));
     socket.on('telemetry', ingestTelemetry);
     socket.on('decision_log', appendDecisionLog);
+    socket.on('hardware_telemetry', (data) => {
+      if (!data) return;
+      const store = useSimulationStore.getState();
+      const mappedAngle = data.angle !== undefined ? data.angle * (45.0 / 32.0) : undefined;
+      
+      store.updateSensors({
+        ultra_left: data.ultra_left,
+        ultra_right: data.ultra_right,
+        angle: mappedAngle,
+        weight: data.weight,
+        vibration_g: data.vibration !== undefined ? data.vibration : store.sensors.vibration_g,
+        acoustic_db: data.acoustic !== undefined ? data.acoustic : store.sensors.acoustic_db,
+        camera: data.camera
+      });
+
+      if (mappedAngle !== undefined) {
+        store.setBedKinematics({
+          bedAngle: mappedAngle,
+          hydraulicExtension: mappedAngle / 60
+        });
+      }
+
+      store.updateHistory({
+        timestamp: data.timestamp || Date.now(),
+        ultra_left: data.ultra_left,
+        ultra_right: data.ultra_right,
+        angle: mappedAngle,
+        weight: data.weight
+      });
+    });
 
     socket.connect();
 
@@ -27,6 +57,7 @@ export function useSocket() {
       socket.off('disconnect');
       socket.off('telemetry');
       socket.off('decision_log');
+      socket.off('hardware_telemetry');
       socket.disconnect();
     };
   }, [appendDecisionLog, ingestTelemetry, setConnected]);

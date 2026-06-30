@@ -95,8 +95,9 @@ export default function App() {
   useSocket();
   useDumpCycleSequence();
   useEffect(() => {
-    const stop = startSimulationPolling();
-    return stop;
+    // Disabled simulated sensor polling to exclusively use live API data
+    // const stopSim = startSimulationPolling();
+    // return stopSim;
   }, []);
 
   return (
@@ -106,9 +107,8 @@ export default function App() {
 
         {/* ── Main 3-column layout (stacks on mobile) ──────────────── */}
         <main className="grid min-h-0 gap-2 sm:gap-3
-          grid-cols-1 grid-rows-[1fr]
-          md:grid-cols-[260px_1fr]
-          xl:grid-cols-[260px_minmax(0,1fr)_260px]"
+          grid-cols-1 grid-rows-[auto_auto_auto]
+          lg:grid-cols-[260px_minmax(0,1fr)_260px] lg:grid-rows-[1fr]"
         >
           {/* Left: Control Panel */}
           <motion.section
@@ -140,7 +140,7 @@ export default function App() {
             initial={{ x: 18, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.12, duration: 0.4 }}
-            className="panel min-h-0 overflow-hidden rounded-2xl p-0 hidden xl:block"
+            className="panel min-h-0 overflow-hidden rounded-2xl p-0 block"
           >
             <SensorDashboard />
           </motion.section>

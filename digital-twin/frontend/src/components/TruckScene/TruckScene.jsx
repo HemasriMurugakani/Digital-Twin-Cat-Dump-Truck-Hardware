@@ -8,12 +8,12 @@ import TruckBody from './TruckBody';
 import MaterialParticles from './MaterialParticles';
 import SensorMarkers from './SensorMarkers';
 const CAMERA_PRESETS_BY_TRUCK = {
-  cat793f: {
-    ISO: { position: [5.8, 3.3, 8.8], target: [0, 1.8, 0] },
-    SIDE: { position: [9.6, 3.0, 0.25], target: [0, 2.0, 0] },
-    FRONT: { position: [0, 3.3, -10.6], target: [0, 1.9, 0] },
-    TOP: { position: [0.1, 10.6, 0.1], target: [0, 0.4, 0] },
-    REAR: { position: [0, 3.3, 10.6], target: [0, 1.9, 0] }
+  cat789c_rigged: {
+    ISO: { position: [22, 11, 32], target: [0, 2.0, 0] },
+    SIDE: { position: [36, 9, 0.5], target: [0, 2.2, 0] },
+    FRONT: { position: [0, 10.5, -36], target: [0, 2.0, 0] },
+    TOP: { position: [0.1, 38, 0.1], target: [0, 0.4, 0] },
+    REAR: { position: [0, 10.5, 36], target: [0, 2.0, 0] }
   },
   cat797b: {
     ISO: { position: [6.4, 3.6, 9.7], target: [0, 2.0, 0] },
@@ -21,20 +21,12 @@ const CAMERA_PRESETS_BY_TRUCK = {
     FRONT: { position: [0, 3.5, -11.7], target: [0, 2.0, 0] },
     TOP: { position: [0.1, 11.5, 0.1], target: [0, 0.4, 0] },
     REAR: { position: [0, 3.5, 11.7], target: [0, 2.0, 0] }
-  },
-  cat789c: {
-    ISO: { position: [7.5, 4, 11], target: [0, 2.2, 0] },
-    SIDE: { position: [13, 3.5, 0.3], target: [0, 2.5, 0] },
-    FRONT: { position: [0, 3.8, -13], target: [0, 2.2, 0] },
-    TOP: { position: [0.1, 13, 0.1], target: [0, 0.5, 0] },
-    REAR: { position: [0, 3.8, 13], target: [0, 2.2, 0] }
   }
 };
 
 const TRUCK_SCENE_OFFSETS = {
-  cat793f: [0, 0, 0],
-  cat797b: [0, 0, 0],
-  cat789c: [0, 0.5, 0]
+  cat789c_rigged: [0, 0.5, 0],
+  cat797b: [0, 0, 0]
 };
 
 function CameraPresetAnimator({ preset, controlsRef, presets }) {
@@ -153,11 +145,10 @@ function CameraPresetPanel({ preset, onPresetChange, autoRotate360, onToggle360 
             key={key}
             type="button"
             onClick={() => onPresetChange(key)}
-            className={`rounded-md px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] transition-all duration-200 ${
-              active
+            className={`rounded-md px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] transition-all duration-200 ${active
                 ? 'bg-[var(--yellow)] text-black shadow-[0_0_10px_rgba(245,168,0,0.3)]'
                 : 'text-[var(--text-muted)] hover:bg-[#1a2030] hover:text-[var(--text-primary)]'
-            }`}
+              }`}
           >
             {label}
           </button>
@@ -167,11 +158,10 @@ function CameraPresetPanel({ preset, onPresetChange, autoRotate360, onToggle360 
       <button
         type="button"
         onClick={onToggle360}
-        className={`rounded-md px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] transition-all duration-200 ${
-          autoRotate360
+        className={`rounded-md px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] transition-all duration-200 ${autoRotate360
             ? 'bg-[var(--yellow)] text-black shadow-[0_0_10px_rgba(245,168,0,0.3)]'
             : 'text-[var(--text-muted)] hover:bg-[#1a2030] hover:text-[var(--text-primary)]'
-        }`}
+          }`}
       >
         {autoRotate360 ? '⟳ 360 DEGREE' : '360 DEGREE'}
       </button>
@@ -252,15 +242,22 @@ export default function TruckScene() {
       }
     }));
 
-    const name = selectedTruck === 'cat797b' ? 'CAT 797B' : selectedTruck === 'cat789c' ? 'CAT 789C' : 'CAT 793F';
+    const name =
+      selectedTruck === 'cat797b'
+        ? 'CAT 797F'
+        : 'CAT 789C';
     setLoadingLabel(`Loading ${name}...`);
     const timeout = window.setTimeout(() => setLoadingLabel(''), 1200);
     return () => window.clearTimeout(timeout);
   }, [selectedTruck, truckSwitchToken]);
 
-  const truckName = selectedTruck === 'cat797b' ? 'CAT 797B' : selectedTruck === 'cat789c' ? 'CAT 789C' : 'CAT 793F';
-  const truckSceneOffset = TRUCK_SCENE_OFFSETS[selectedTruck] ?? TRUCK_SCENE_OFFSETS.cat793f;
-  const cameraPresets = CAMERA_PRESETS_BY_TRUCK[selectedTruck] ?? CAMERA_PRESETS_BY_TRUCK.cat793f;
+  const truckName =
+    selectedTruck === 'cat797b'
+      ? 'CAT 797F'
+      : 'CAT 789C';
+  const truckSceneOffset = TRUCK_SCENE_OFFSETS[selectedTruck] ?? TRUCK_SCENE_OFFSETS.cat789c_rigged;
+  const cameraPresets = CAMERA_PRESETS_BY_TRUCK[selectedTruck] ?? CAMERA_PRESETS_BY_TRUCK.cat789c_rigged;
+  const cameraFov = selectedTruck === 'cat789c_rigged' ? 38 : 45;
 
   return (
     <div className="relative h-full w-full overflow-hidden">
@@ -305,7 +302,7 @@ export default function TruckScene() {
 
       <Canvas
         shadows
-        camera={{ position: cameraPresets.ISO.position, fov: 45 }}
+        camera={{ position: cameraPresets.ISO.position, fov: cameraFov }}
         style={{ width: '100%', height: '100%' }}
       >
         <color attach="background" args={['#080809']} />
@@ -329,7 +326,7 @@ export default function TruckScene() {
           enableDamping
           dampingFactor={0.08}
           minDistance={5}
-          maxDistance={28}
+          maxDistance={50}
           minPolarAngle={autoRotate360 ? 0.05 : 0.2}
           maxPolarAngle={autoRotate360 ? Math.PI - 0.05 : Math.PI / 2}
           autoRotate={autoRotate360 || phase === 'IDLE'}

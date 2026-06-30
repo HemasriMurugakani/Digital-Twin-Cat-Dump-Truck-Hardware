@@ -11,9 +11,11 @@ import SystemFlowDiagram from '../SystemFlowDiagram';
 
 /* ─── Compact sensor row ──────────────────────────────────────────────────── */
 function SensorRow({ label, icon, value, unit, status, accentColor, data, dataKey, delay = 0 }) {
-  const isAlert = status === 'ALERT' || status === 'HIGH RISK';
+  const isAlert = status === 'ALERT' || status === 'HIGH RISK' || status === 'RESIDUE PRESENT';
   const badgeColor = isAlert ? '#ef4444' : '#22c55e';
-  const badgeLabel = isAlert ? 'ALERT' : (status || 'OK');
+  const badgeLabel = status === 'RESIDUE PRESENT' ? 'RESIDUE PRESENT'
+    : status === 'RESIDUE ABSENT' ? 'RESIDUE ABSENT'
+      : isAlert ? 'ALERT' : (status || 'OK');
 
   return (
     <motion.div
@@ -42,15 +44,19 @@ function SensorRow({ label, icon, value, unit, status, accentColor, data, dataKe
       </div>
 
       {/* Value row */}
-      <div className="flex items-baseline gap-1 value-animate">
-        <span className="data text-[1.7rem] font-bold leading-none" style={{ color: accentColor }}>{value}</span>
-        <span className="data text-[11px] text-[var(--text-muted)]">{unit}</span>
-      </div>
+      {value !== null && (
+        <div className="flex items-baseline gap-1 value-animate">
+          <span className="data text-[1.7rem] font-bold leading-none" style={{ color: accentColor }}>{value}</span>
+          <span className="data text-[11px] text-[var(--text-muted)]">{unit}</span>
+        </div>
+      )}
 
       {/* Sparkline */}
-      <div className="mt-1.5 h-9 w-full">
-        <MiniSensorChart data={data} dataKey={dataKey} stroke={accentColor} />
-      </div>
+      {value !== null && (
+        <div className="mt-1.5 h-9 w-full">
+          <MiniSensorChart data={data} dataKey={dataKey} stroke={accentColor} />
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -62,8 +68,10 @@ export default function SensorDashboard() {
   const history = useSimulationStore((s) => s.history);
   const latencyMs = useSimulationStore((s) => s.latencyMs);
   const connected = useSimulationStore((s) => s.connected);
+  const camera = useSimulationStore((s) => s.sensorReadings.camera);
 
   const sensorHealth = evaluateSensorHealth(sensors);
+  const residueStatus = camera?.residue_present ? 'RESIDUE PRESENT' : 'RESIDUE ABSENT';
   const series = toChartSeries(history);
   const miniSeries = useMemo(() => series.slice(-30).map((s, i) => ({ ...s, idx: i })), [series]);
 
@@ -92,29 +100,41 @@ export default function SensorDashboard() {
           {/* Section label */}
           <p className="heading text-[11px] tracking-[0.22em] text-[var(--text-muted)] px-0.5 mb-1">Sensor Readouts</p>
 
-          <SensorRow
+          {/* <SensorRow
             label="ACOUSTIC" icon="🔊" accentColor="#F5A800"
-            value={sensors.acoustic_db?.toFixed(1) ?? '—'} unit="dB"
-            status={sensorHealth.acoustic === 'ok' ? 'OK' : 'ALERT'}
+            value={null} unit={null}
+            status={residueStatus}
             data={miniSeries} dataKey="acoustic" delay={0.05}
-          />
+          /> */}
           <SensorRow
-            label="VIBRATION" icon="📳" accentColor="#3B82F6"
-            value={sensors.vibration_g?.toFixed(2) ?? '—'} unit="g"
-            status={sensorHealth.vibration === 'ok' ? 'OK' : 'ALERT'}
-            data={miniSeries} dataKey="vibration" delay={0.08}
-          />
-          <SensorRow
-            label="CAMERA (FUSION)" icon="📷" accentColor="#22C55E"
-            value={(fusion.residue_risk * 100)?.toFixed(1) ?? '—'} unit="%"
-            status={fusion.residue_risk < 0.5 ? 'LOW RISK' : 'HIGH RISK'}
+            label="FUSION" accentColor="#22C55E"
+            value={null} unit={null}
+            status={residueStatus}
             data={miniSeries} dataKey="risk" delay={0.11}
           />
           <SensorRow
-            label="LIDAR" icon="📡" accentColor="#8B5CF6"
-            value={sensors.lidar_mm?.toFixed(0) ?? '—'} unit="mm"
-            status={sensorHealth.lidar === 'ok' ? 'OK' : 'ALERT'}
-            data={miniSeries} dataKey="lidar" delay={0.14}
+            label="ULTRA LEFT" icon="📡" accentColor="#8B5CF6"
+            value={sensors.ultra_left?.toFixed(1) ?? '—'} unit="cm"
+            status={sensors.ultra_left > 0 ? 'OK' : 'ALERT'}
+            data={miniSeries} dataKey="ultra_left" delay={0.14}
+          />
+          <SensorRow
+            label="ULTRA RIGHT" icon="📡" accentColor="#8B5CF6"
+            value={sensors.ultra_right?.toFixed(1) ?? '—'} unit="cm"
+            status={sensors.ultra_right > 0 ? 'OK' : 'ALERT'}
+            data={miniSeries} dataKey="ultra_right" delay={0.17}
+          />
+          <SensorRow
+            label="DUMP ANGLE" icon="📐" accentColor="#EAB308"
+            value={sensors.angle?.toFixed(1) ?? '—'} unit="°"
+            status={'OK'}
+            data={miniSeries} dataKey="angle" delay={0.20}
+          />
+          <SensorRow
+            label="WEIGHT" icon="⚖️" accentColor="#F97316"
+            value={sensors.weight?.toFixed(1) ?? '—'} unit="t"
+            status={'OK'}
+            data={miniSeries} dataKey="weight" delay={0.23}
           />
 
           {/* ── Acoustic Analysis ────────────────────────────────────── */}
@@ -122,7 +142,7 @@ export default function SensorDashboard() {
 
           {/* ── Zone Heatmap ─────────────────────────────────────────── */}
           <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-2.5">
-            <ZoneHeatmap zoneValues={zones} />
+            <ZoneHeatmap zoneValues={zones} activeCameraGrids={camera?.active_grids || []} />
           </div>
 
           {/* ── AI Decision Log ──────────────────────────────────────── */}

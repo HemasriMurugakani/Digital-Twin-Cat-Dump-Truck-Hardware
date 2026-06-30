@@ -109,7 +109,7 @@ function SensorCard({ icon, label, value, unit, confidence, trend, detail, tone 
 
   return (
     <div className="group rounded-lg border border-[var(--border)] bg-[var(--bg-card)] p-2.5 transition hover:border-[#2a3548] hover:brightness-110"
-         style={{ borderLeftWidth: '3px', borderLeftColor: tone }}>
+      style={{ borderLeftWidth: '3px', borderLeftColor: tone }}>
       {/* Row 1: icon + label */}
       <div className="flex items-center gap-1.5">
         <span className="text-sm">{icon}</span>
@@ -282,7 +282,7 @@ export default function ControlPanel() {
           </div>
           <div className="min-w-0">
             <p className="heading text-[11px] tracking-[0.35em] text-[var(--yellow)]">SmartBed</p>
-            <p className="data text-[22px] sm:text-[26px] leading-none text-[var(--yellow)]">CAT 793-11</p>
+            {/* <p className="data text-[22px] sm:text-[26px] leading-none text-[var(--yellow)]">CAT 793-11</p> */}
             <p className="mt-0.5 sm:mt-1 text-[10px] sm:text-xs tracking-[0.34em] text-[var(--text-muted)]">DIGITAL TWIN SIMULATION</p>
           </div>
         </div>
@@ -317,10 +317,7 @@ export default function ControlPanel() {
                   {currentStateTone.label}
                 </div>
               </div>
-              <div className="text-right">
-                <p className="heading text-[11px] tracking-[0.28em] text-[var(--yellow)]">Cycle</p>
-                <p className="data text-4xl leading-none text-[var(--yellow)]">#{cycleNumber}</p>
-              </div>
+
             </div>
 
             <div className="mt-3 grid grid-cols-2 gap-2">
@@ -392,11 +389,10 @@ export default function ControlPanel() {
               className="rounded-lg border border-[var(--amber)] bg-[rgba(245,158,11,0.08)] px-3 py-2.5 text-left text-xs font-semibold text-[var(--amber)] transition hover:bg-[rgba(245,158,11,0.18)]"
             >⚡ TRIGGER VIBRATION</button>
             <button type="button" onClick={toggleShowZones}
-              className={`rounded-lg border px-3 py-2.5 text-left text-xs font-semibold transition ${
-                showZones
-                  ? 'border-[var(--blue)] bg-[rgba(59,130,246,0.1)] text-[var(--text-primary)]'
-                  : 'border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:border-[var(--blue)]'
-              }`}
+              className={`rounded-lg border px-3 py-2.5 text-left text-xs font-semibold transition ${showZones
+                ? 'border-[var(--blue)] bg-[rgba(59,130,246,0.1)] text-[var(--text-primary)]'
+                : 'border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:border-[var(--blue)]'
+                }`}
             >📊 {showZones ? 'HIDE ZONES' : 'SHOW ZONES'}</button>
           </div>
         </SectionCard>
@@ -421,7 +417,7 @@ export default function ControlPanel() {
           </p>
         </SectionCard>
 
-        <SectionCard title="Sensor Readouts" subtitle="Live values and fusion trend">
+        {/* <SectionCard title="Sensor Readouts" subtitle="Live values and fusion trend">
           <div className="grid grid-cols-1 gap-1.5">
             <SensorCard
               icon="⚖"
@@ -464,7 +460,7 @@ export default function ControlPanel() {
               tone="rgba(245,158,11,0.92)"
             />
           </div>
-        </SectionCard>
+        </SectionCard> */}
 
         <ConfidenceGauge value={fusion.residue_risk} />
 

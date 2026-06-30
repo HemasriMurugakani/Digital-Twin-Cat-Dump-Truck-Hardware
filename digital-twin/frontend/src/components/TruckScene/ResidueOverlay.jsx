@@ -4,12 +4,15 @@ import { useFrame } from '@react-three/fiber';
 import { useSimulationStore } from '../../store/simulationStore';
 
 const zonePositions = {
-  FL: [6.5, 0.21, 2.5],
-  FC: [6.5, 0.21, 0],
-  FR: [6.5, 0.21, -2.5],
-  RL: [1.5, 0.21, 2.5],
-  RC: [1.5, 0.21, 0],
-  RR: [1.5, 0.21, -2.5]
+  R1C1: [7.5, 0.21, 2.5],
+  R1C2: [7.5, 0.21, 0],
+  R1C3: [7.5, 0.21, -2.5],
+  R2C1: [4.0, 0.21, 2.5],
+  R2C2: [4.0, 0.21, 0],
+  R2C3: [4.0, 0.21, -2.5],
+  R3C1: [0.5, 0.21, 2.5],
+  R3C2: [0.5, 0.21, 0],
+  R3C3: [0.5, 0.21, -2.5]
 };
 
 function getZoneTone(zone) {
@@ -32,10 +35,12 @@ export default function ResidueOverlay() {
   const zones = useSimulationStore((s) => s.zoneDetails);
   const showZones = useSimulationStore((s) => s.showZones);
   const dumpCycle = useSimulationStore((s) => s.dumpCycle);
+  const camera = useSimulationStore((s) => s.sensorReadings.camera);
   const [pulseTime, setPulseTime] = useState(0);
 
   const entries = useMemo(() => Object.entries(zonePositions), []);
-  const residueDetected = entries.some(([zone]) => zones?.[zone]?.residue);
+  const activeCameraGrids = camera?.active_grids || [];
+  const residueDetected = entries.some(([zone]) => zones?.[zone]?.residue) || camera?.residue_present;
 
   useFrame(({ clock }) => {
     setPulseTime(clock.elapsedTime);
@@ -58,7 +63,15 @@ export default function ResidueOverlay() {
         </mesh>
       )}
       {entries.map(([zone, pos]) => {
-        const zoneData = zones?.[zone] ?? { residue: false, tonnes: 0, confidence: 0 };
+        const zoneDataRaw = zones?.[zone] ?? { residue: false, tonnes: 0, confidence: 0 };
+        const zoneData = { ...zoneDataRaw };
+        const isCameraActive = activeCameraGrids.includes(zone);
+        
+        if (isCameraActive) {
+          zoneData.residue = true;
+          if (zoneData.confidence < 0.8) zoneData.confidence = 0.85;
+          if (zoneData.tonnes === 0) zoneData.tonnes = 1.5;
+        }
         const tone = getZoneTone(zoneData);
         const visible = zoneData.residue || showZones;
         const pulseOpacity = clearActive
@@ -115,7 +128,7 @@ export default function ResidueOverlay() {
       {residueDetected && (
         <Html center position={[4.0, 0.9, 0]} distanceFactor={12}>
           <div className="rounded border border-[#EF4444]/50 bg-black/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-[#EF4444]">
-            Residue Detected
+            {camera?.residue_present ? 'Residue Present' : 'Residue Detected'}
           </div>
         </Html>
       )}

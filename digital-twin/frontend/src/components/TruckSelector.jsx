@@ -1,9 +1,8 @@
 import { useSimulationStore } from '../store/simulationStore';
 
 const options = [
-  { key: 'cat793f', label: 'CAT 793F' },
-  { key: 'cat797b', label: 'CAT 797F' },
-  { key: 'cat789c', label: 'CAT 789C' }
+  { key: 'cat789c_rigged', label: 'CAT 789C' },
+  { key: 'cat797b', label: 'CAT 797F' }
 ];
 
 export default function TruckSelector() {
@@ -20,8 +19,8 @@ export default function TruckSelector() {
             type="button"
             onClick={() => setSelectedTruck(option.key)}
             className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] transition ${active
-                ? 'border-[#f59e0b] bg-[#f59e0b] text-black'
-                : 'border-[#2a3a50] bg-[#1a2535] text-[#64748b] hover:border-[#3b4f69] hover:text-[#cbd5e1]'
+              ? 'border-[#f59e0b] bg-[#f59e0b] text-black'
+              : 'border-[#2a3a50] bg-[#1a2535] text-[#64748b] hover:border-[#3b4f69] hover:text-[#cbd5e1]'
               }`}
           >
             {option.label}
