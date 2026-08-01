@@ -4,6 +4,7 @@
   "private": true,
   "description": "SCBES Digital Twin for Caterpillar 793F",
   "scripts": {
+    "dev": "npm --prefix frontend run dev",
     "backend:install": "python3 -m pip install -r backend/requirements.txt",
     "backend:dev": "python3 backend/app.py",
     "frontend:dev": "npm --prefix frontend run dev",
